@@ -288,7 +288,7 @@ b,strong{font-weight:600}
 .tips{display:grid;grid-template-columns:1fr 1fr;margin:16px 0;padding:0;list-style:none;border-top:1px solid var(--line)}
 .tips li{display:flex;gap:10px;align-items:baseline;font-size:13px;color:var(--ink2);padding:11px 4px;border-bottom:1px solid var(--line);line-height:1.45}
 .tips li:nth-child(odd){border-right:1px solid var(--line)} .tips li:nth-child(even){padding-left:12px}
-.tips li em{font-style:normal;font-family:var(--serif);color:var(--gold);font-size:12px}
+.tips li em{white-space:nowrap;font-style:normal;font-family:var(--serif);color:var(--gold);font-size:12px}
 .pcap .btn svg,.btn svg.i{width:18px;height:18px}
 .stage{position:relative;border-radius:18px;overflow:hidden;background:#07080c;touch-action:none;user-select:none;margin:0 auto;border:1px solid var(--line);box-shadow:0 20px 40px -20px rgba(0,0,0,.8)}
 .stage canvas{display:block;width:100%;height:auto}
@@ -330,3 +330,46 @@ b,strong{font-weight:600}
 .privacy-note svg{width:16px;height:16px;margin-top:1px}
 .garc{animation:garc 1.5s .35s cubic-bezier(.2,.7,.2,1) both} @keyframes garc{from{stroke-dasharray:0 400}}
 .score .arc{animation:arc 1.7s .35s cubic-bezier(.2,.7,.2,1) both} @keyframes arc{from{stroke-dashoffset:var(--c)}}
+/* ---- 손금 안내서 · 가까이 찍기 · 점 찍어 그리기 ---- */
+body.noscroll{overflow:hidden}
+.pguide{max-height:92vh;overflow-y:auto;overscroll-behavior:contain;padding-top:10px}
+.pg-big{margin:10px auto 4px;max-width:330px} .pg-big svg{display:block;width:100%;height:auto}
+.pg-list{list-style:none;margin:8px 0 0;padding:0;border-top:1px solid var(--line)}
+.pg-list li{display:grid;grid-template-columns:26px 1fr;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.pg-list em{font-style:normal;font-family:var(--serif);font-weight:700;font-size:13px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:var(--c);border:1px solid var(--c);box-shadow:0 0 10px -2px var(--c)}
+.pg-list b{font-family:var(--serif);font-weight:500;font-size:16px;color:var(--ink)} .pg-list .al{font-size:11.5px;color:var(--mute);margin-left:6px}
+.pg-list .mn{float:right;font-size:11.5px;color:var(--c);border:1px solid color-mix(in srgb,var(--c) 40%,transparent);border-radius:99px;padding:1px 9px}
+.pg-list p{margin:4px 0 0;font-size:13.5px;color:var(--ink2);line-height:1.55}
+.pg-tip{display:grid;grid-template-columns:26px 1fr;gap:10px;margin:14px 0 4px;padding:13px 14px;border-radius:14px;background:rgba(214,185,124,.06);border:1px solid var(--line)}
+.pg-tip svg{width:22px;height:22px;color:var(--gold)} .pg-tip p{margin:0;font-size:13px;color:var(--ink2);line-height:1.6} .pg-tip b{color:var(--gold-hi);font-weight:600}
+.pg-act{position:sticky;bottom:calc(-22px - var(--safe-b));background:linear-gradient(180deg,rgba(15,17,25,0),#0f1119 26%);padding:18px 0 4px;margin-top:4px}
+.pcap .frame svg.pg{width:58%}
+.pcap .gbtn{display:flex;align-items:center;justify-content:center;gap:8px;margin:12px auto 0;width:100%;min-height:48px;border-radius:14px;border:1px dashed var(--line2);background:rgba(214,185,124,.03);color:var(--gold-hi);font-size:14px;cursor:pointer}
+.pcap .gbtn svg{width:22px;height:28px}
+.pex{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0 4px}
+.pex figure{margin:0;text-align:center} .pex svg{display:block;width:100%;height:auto;border-radius:12px;border:1px solid var(--line)}
+.pex figure.ok svg{border-color:rgba(143,198,162,.55);box-shadow:0 0 0 1px rgba(143,198,162,.15)}
+.pex figcaption{font-size:11px;line-height:1.35;color:var(--sub);margin-top:6px;word-break:keep-all} .pex .ok figcaption{color:var(--ok)}
+.shots{list-style:none;margin:14px 0 6px;padding:0}
+.shots li{display:grid;grid-template-columns:62px 1fr auto;gap:12px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:16px;margin:0 0 10px;background:rgba(255,255,255,.015)}
+.shots li.rec{border-color:var(--line2)} .shots li svg.pg{width:62px;height:auto;display:block}
+.shots b{font-family:var(--serif);font-weight:500;font-size:15px;color:var(--ink);display:block} .shots .mini{display:block;margin-top:2px}
+.shots .rc{display:inline-block;font-size:10.5px;color:var(--warn);border:1px solid rgba(227,167,101,.4);border-radius:99px;padding:0 7px;margin-left:6px;vertical-align:2px;font-family:var(--sans)}
+.shots .take{display:grid;place-items:center;width:64px;height:64px;border-radius:14px;border:1px solid var(--line2);color:var(--gold-hi);font-size:11.5px;cursor:pointer;background:rgba(214,185,124,.05);gap:2px;padding:6px 0}
+.shots .take svg{width:20px;height:20px} .shots .take canvas{width:52px;height:40px;object-fit:cover;border-radius:6px}
+.shots .st{margin-left:0}
+.gl{display:grid;grid-template-columns:78px 1fr;gap:12px;align-items:center;margin:0 0 14px;padding:10px 12px 10px 8px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.015)}
+.gl svg.pg{width:78px;height:auto;display:block} .gl p{margin:0;font-size:13.5px;color:var(--ink2);line-height:1.55} .gl .mn{display:inline-block;font-size:11px;color:var(--c);margin-bottom:3px;letter-spacing:.04em}
+.gl button{background:none;border:0;padding:6px 0 0;color:var(--gold);font-size:12.5px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.zoomwrap{margin:12px 0 0} .zoomwrap .zl{display:flex;justify-content:space-between;font-size:12px;color:var(--sub);margin:0 2px 6px}
+.zoom{position:relative;overflow:hidden;border-radius:14px;border:1px solid var(--line2);touch-action:none;background:#07080c;max-height:38vh}
+.zoom>canvas{display:block;width:100%;height:auto;transform-origin:0 0;will-change:transform}
+.zoom:after{content:"두 손가락으로 확대";position:absolute;right:8px;bottom:8px;font-size:11px;color:#fff;background:rgba(0,0,0,.55);padding:3px 8px;border-radius:99px;pointer-events:none;transition:opacity .3s}
+.zoom.zoomed:after{opacity:0}
+.addshot{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:46px;margin-top:10px;border-radius:14px;border:1px dashed var(--line2);color:var(--gold-hi);font-size:13.5px;cursor:pointer}
+.addshot svg{width:17px;height:17px}
+.stage .tp{fill:#0b0d14;stroke-width:2px} .stage .tpn{font-weight:700;font-family:var(--sans)}
+.stage .tpl{fill:none;stroke-linecap:round;opacity:.75}
+.tapbar{display:flex;justify-content:center;gap:6px;margin:10px 0 2px} .tapbar i{width:9px;height:9px;border-radius:50%;border:1px solid var(--line2)} .tapbar i.on{background:var(--gold);border-color:var(--gold)}
+.acts{display:grid;gap:8px} .acts .btn{min-height:54px}
+@media (max-width:360px){.pex{grid-template-columns:repeat(2,1fr)}}

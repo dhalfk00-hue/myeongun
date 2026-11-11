@@ -674,7 +674,9 @@
   // 못 찾은 선을 사용자가 그릴 때 시작 모양: 보통 그 선이 있는 자리(이 손에 맞춘 평균 위치)
   function seed(res, k) {
     const X = res._ctx; if (!X) return [];
-    const h = (k === "life" || k === "head") ? anchoredHyps(k, X.Pc, X.Tall)[0] : hyps(k)[0].map(c => X.Tall(px(c)));
+    // 보통 그 선이 있는 자리(평균 위치): 재운선=약지 축, 사업선=손바닥 아래→새끼손가락 쪽, 운명선=손목 가운데→중지
+    const TPL = { sun: [[-0.22, 0.48], [-0.215, 0.68], [-0.21, 0.88]], business: [[0.12, 0.14], [-0.04, 0.33], [-0.22, 0.52], [-0.42, 0.70]], fate: [[0.02, 0.04], [0.02, 0.33], [0.01, 0.62], [0.0, 0.9]], heart: hyps("heart")[13] };
+    const h = (k === "life" || k === "head") ? anchoredHyps(k, X.Pc, X.Tall)[k === "life" ? 22 : 89] || anchoredHyps(k, X.Pc, X.Tall)[0] : (TPL[k] || hyps(k)[0]).map(c => X.Tall(px(c)));
     return catmull(h, 12).map(p => apply(X.Mi, p));
   }
   // 사진 품질: 밝기(평균 휘도)와 선명도(라플라시안 분산). 흐리거나 어두우면 다시 찍기 안내
@@ -696,5 +698,5 @@
     return { mean: +mean.toFixed(1), center: +cm.toFixed(1), sharp: +lap.toFixed(1), dark: cm < 70, blurry: lap < 18, bright: cm > 245 };
   }
 
-  window.PalmDetect = { analyze, loadLandmarker, NAMES, refine, seed, quality, catmull };
+  window.PalmDetect = { analyze, loadLandmarker, NAMES, refine, seed, quality, catmull, fitAffine };
 })();

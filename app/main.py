@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """명운 웹앱 백엔드 (FastAPI). 화면은 /static, API는 /api/v2 (report_api). 사진 업로드 API 없음."""
+import mimetypes
 from pathlib import Path
+
+mimetypes.add_type("image/webp", ".webp")  # slim 이미지에는 mime.types가 없어 webp가 octet-stream으로 나감
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse

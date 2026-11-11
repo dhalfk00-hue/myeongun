@@ -4,12 +4,12 @@
   "use strict";
   const ORDER = ["sun", "business", "fate", "life", "head", "heart"];
   const NAME = { sun: "재운선", business: "사업선", fate: "운명선", life: "생명선", head: "두뇌선", heart: "감정선" };
-  const ALIAS = { sun: "태양선·재물선", business: "", fate: "", life: "", head: "지능선", heart: "" };
+  const ALIAS = { sun: "재물선", business: "", fate: "", life: "", head: "지능선", heart: "" };
   const COLOR = { sun: "#f3d27a", business: "#8fc3e8", fate: "#efe4cc", life: "#e0a65e", head: "#b9a8e6", heart: "#e7928a" };
   const MEAN = { sun: "재물 · 돈복", business: "장사 · 사업 감각", fate: "일 · 사회운", life: "건강 · 생활력", head: "생각 · 재능", heart: "감정 · 관계" };
   const FIND = {
-    sun: "약지(넷째 손가락) 바로 아래, 세로로 짧게 올라간 선이에요.",
-    business: "손목 가까운 손바닥 아래에서 새끼손가락 쪽으로 비스듬히 올라가는 선이에요.",
+    sun: "약지(넷째 손가락) 바로 아래에서 약지 쪽으로 짧게 올라가는 세로선이에요.",
+    business: "손바닥 아래 가운데에서 새끼손가락 아래로 비스듬히 올라가는 선이에요.",
     fate: "손목 한가운데에서 가운뎃손가락 쪽으로 곧게 올라가는 세로선이에요.",
     life: "엄지와 검지 사이에서 시작해 엄지 아래 두툼한 살을 둥글게 감싸는 곡선이에요.",
     head: "생명선과 같은 곳에서 시작해 손바닥 한가운데를 가로지르는 선이에요.",
@@ -17,14 +17,17 @@
   };
   // 오른손 손바닥(엄지 오른쪽), viewBox 0 0 200 260
   const D = {
-    sun: "M80 186 C79 166 78 146 77 127",
-    business: "M110 236 C92 208 72 178 56 150",
+    sun: "M77.5 172 C77.2 160 76.9 149 76.5 136",            // 약지 바로 아래, 약지를 향해 짧게 올라감
+    business: "M108 236 C88 226 66 200 56 160",              // 손바닥 아래 가운데 → 새끼손가락 아래로 비스듬히
     fate: "M100 248 C101 210 103 168 104 126",
     life: "M149 140 C124 150 110 190 124 248",
     head: "M149 143 C122 150 92 164 60 190",
     heart: "M46 148 C74 146 100 140 125 121",
   };
-  const NUM = { sun: [66, 133], business: [68, 171], fate: [103, 186], life: [119, 190], head: [120, 153], heart: [40, 148] };
+  // 번호(선 위)와 이름표(선 바로 옆) 위치
+  const NUM = { sun: [76.5, 131], business: [61, 180], fate: [103, 186], life: [119, 190], head: [120, 153], heart: [40, 148] };
+  const TAG = { sun: [81, 157, "start"], business: [70, 238, "start"], fate: [98, 205, "end"], life: [126, 222, "start"], head: [128, 140, "middle"], heart: [47, 141, "start"] };
+  const FULL = { sun: "재운선(태양선)", business: "사업선", fate: "운명선", life: "생명선", head: "두뇌선", heart: "감정선" };
   const REGIONS = [
     { id: "pinky", no: "①", t: "약지 · 새끼손가락 아래", lines: ["sun", "heart"], e: [70, 150, 36, 30] },
     { id: "center", no: "②", t: "손바닥 가운데", lines: ["fate", "business", "head"], e: [96, 188, 40, 42] },
@@ -65,8 +68,9 @@
     let rg = "";
     if (o.region) { const R = REGIONS.find(r => r.id === o.region); if (R) rg = `<ellipse cx="${R.e[0]}" cy="${R.e[1]}" rx="${R.e[2]}" ry="${R.e[3]}" fill="rgba(243,226,182,.16)" stroke="#f3e2b6" stroke-width="3" stroke-dasharray="7 5"/>`; }
     let nums = "";
-    if (o.nums && !o.ghost) ORDER.forEach((k, i) => { const [x, y] = NUM[k];
-      nums += `<g><circle cx="${X(x)}" cy="${y}" r="6" fill="#0b0d14" stroke="${COLOR[k]}" stroke-width="1.3"/><text x="${X(x)}" y="${y + 2.9}" font-size="8.2" text-anchor="middle" fill="${COLOR[k]}" font-family="var(--serif)" font-weight="700">${i + 1}</text></g>`; });
+    if (o.nums && !o.ghost) ORDER.forEach((k, i) => { const [x, y] = NUM[k], [tx, ty, an] = TAG[k], A = o.mirror ? { start: "end", end: "start", middle: "middle" }[an] : an;
+      nums += `<g><circle cx="${X(x)}" cy="${y}" r="4.8" fill="#0b0d14" stroke="${COLOR[k]}" stroke-width="1.1"/><text x="${X(x)}" y="${y + 2.3}" font-size="6.6" text-anchor="middle" fill="${COLOR[k]}" font-family="var(--serif)" font-weight="700">${i + 1}</text>
+        <text x="${X(tx)}" y="${ty}" font-size="6.6" text-anchor="${A}" fill="${COLOR[k]}" font-family="var(--sans)" font-weight="600" style="paint-order:stroke;stroke:#17140f;stroke-width:2.4px;stroke-linejoin:round">${NAME[k]}</text></g>`; });
     const lab = o.labels ? `<g font-size="8" fill="#9a9384" font-family="var(--sans)" letter-spacing=".08em"><text x="${X(o.mirror ? 186 : 14)}" y="20" text-anchor="${o.mirror ? "end" : "start"}">${o.mirror ? "왼손" : "오른손"} 손바닥</text>
       <text x="${X(184)}" y="112" text-anchor="middle">엄지</text><text x="${X(51)}" y="58" text-anchor="middle">새끼</text><text x="${X(76)}" y="25" text-anchor="middle">약지</text><text x="${X(103.5)}" y="13" text-anchor="middle">중지</text><text x="${X(131)}" y="29" text-anchor="middle">검지</text><text x="${X(100)}" y="259" text-anchor="middle">손목</text></g>` : "";
     return `<svg class="pg${o.cls ? " " + o.cls : ""}" viewBox="0 0 200 262" role="img" aria-label="손금 위치 그림">${defs(id)}<g${mir}>${o.ghost ? hand(id, { fill: "#11131b", edge: "rgba(214,185,124,.6)", sw: .6, creases: false }) : hand(id)}<ellipse cx="100" cy="180" rx="60" ry="70" fill="url(#${id}h)"/>${rg}${ln}</g>${nums}${lab}</svg>`;
@@ -100,7 +104,7 @@
       <div class="step">手相 · 손금 지도</div><h3>내 손금, 어디에 있을까요?</h3>
       <p class="mini" style="margin:0">${o.mirror ? "왼손" : "오른손"} 손바닥을 내 쪽으로 펼친 모습이에요. ${o.mirror ? "오른손은" : "왼손은"} 좌우만 바뀌어요.</p>
       <div class="pg-big">${svg({ nums: true, labels: true, mirror: o.mirror })}</div>
-      <ol class="pg-list">${ORDER.map((k, i) => `<li style="--c:${COLOR[k]}"><em>${i + 1}</em><div><b>${NAME[k]}</b>${ALIAS[k] ? `<span class="al">${ALIAS[k]}</span>` : ""}<span class="mn">${MEAN[k]}</span><p>${FIND[k]}</p></div></li>`).join("")}</ol>
+      <ol class="pg-list">${ORDER.map((k, i) => `<li style="--c:${COLOR[k]}"><em>${i + 1}</em><div><b>${FULL[k]}</b>${ALIAS[k] ? `<span class="al">${ALIAS[k]}</span>` : ""}<span class="mn">${MEAN[k]}</span><p>${FIND[k]}</p></div></li>`).join("")}</ol>
       <div class="pg-tip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0-3.5 10.9V16h7v-2.1A6 6 0 0 0 12 3zM9.5 19h5M10.5 21.5h3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
         <p><b>손을 살짝 오므리면 주름이 진해져요.</b> 찾기 어려운 선은 손을 살짝 오므렸다 펴면서 보세요. 재운선·사업선은 없거나 희미한 분도 많아요.</p></div>
       <div class="pg-act">${o.first ? `<button class="btn btn-gold" data-x="ok">알겠어요, 찍으러 갈게요</button><button class="btn btn-ghost" data-x="skip">건너뛰기</button>` : `<button class="btn btn-gold" data-x="ok">확인했어요</button>`}</div></div>`;
@@ -138,5 +142,5 @@
     return { set(ns, x, y) { tx = x - (x - tx) / s * ns; ty = y - (y - ty) / s * ns; s = ns; draw(); }, get scale() { return s; } };
   }
 
-  window.PalmGuide = { ORDER, NAME, COLOR, MEAN, FIND, REGIONS, REGION_OF, svg, open, exampleHTML, zoomer };
+  window.PalmGuide = { ORDER, NAME, FULL, COLOR, MEAN, FIND, REGIONS, REGION_OF, svg, open, exampleHTML, zoomer };
 })();

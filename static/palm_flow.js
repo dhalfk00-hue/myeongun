@@ -72,7 +72,7 @@
     root.innerHTML = `<div class="card rv"><div class="step">細部 · 더 정확하게 (선택)</div><div class="title" style="font-size:22px">가까이 몇 장 더 찍어 볼까요?</div>
       <p class="lead" style="font-size:14px">방금 사진은 선 위치의 기준으로 쓰고, 가까이 찍은 사진은 선을 확인할 때 <b>옆에 크게</b> 보여 드려요. 안 찍어도 괜찮아요.</p>
       <ul class="shots">${G.REGIONS.map(R => { const sh = S.shots[R.id], rec = R.lines.some(weak);
-        return `<li class="${rec ? "rec" : ""}">${G.svg({ region: R.id, mirror: mir() })}<div><b>${R.no} ${R.t}${rec && !sh ? '<span class="rc">추천</span>' : ""}</b><span class="mini">${R.lines.map(k => NAME[k]).join(" · ")}</span>${sh ? `<span class="mini" style="color:var(--ok)">${shotNote(sh, R)}</span>` : ""}</div>
+        return `<li class="${rec ? "rec" : ""}">${G.svg({ region: R.id, mirror: mir() })}<div><b>${R.no} ${R.t}${rec && !sh ? '<span class="rc">추천</span>' : ""}</b><span class="mini">${R.lines.map(k => G.FULL[k]).join(" · ")}</span>${sh ? `<span class="mini" style="color:var(--ok)">${shotNote(sh, R)}</span>` : ""}</div>
           <label class="take">${sh ? `<canvas data-th="${R.id}"></canvas>다시` : `${ic("cam")}찍기`}<input type="file" accept="image/*" hidden data-shot="${R.id}"></label></li>`; }).join("")}</ul>
       <p class="mini" style="margin:0 0 16px">손바닥에서 한 뼘 거리로, 그 부분이 화면 가운데 오게 찍어 주세요. 두 손가락으로 확대한 사진보다 가까이 다가가 찍은 사진이 더 선명해요.</p>
       <button class="btn btn-gold" id="pf-go">${n ? `${n}장 더해서 선 확인하기` : "선 확인하러 가기"}</button>
@@ -198,7 +198,7 @@
     const k = ORDER[S.idx], L = S.res.lines[k], none = !L || L.conf === "none" || !L.img?.length;
     const hint = S.hint[k] && (none || L.estimated || L.conf !== "high") ? S.hint[k] : null;
     const sh = S.shots[G.REGION_OF[k]], seenClose = sh && sh.found[k];
-    const msg = none ? (seenClose ? `가까이 찍은 사진(아래)에서 ${NAME[k]}이 보였어요. 위 사진에도 같은 자리를 점 몇 개로 찍어 주세요.` : `자동으로 ${NAME[k]}을 찾지 못했어요. 사진에서 보이면 점 몇 개로 그려 주세요. 없거나 아주 희미한 분도 많아요.`)
+    const msg = none ? (seenClose ? `가까이 찍은 사진(아래)에서 ${G.FULL[k]}이 보였어요. 위 사진에도 같은 자리를 점 몇 개로 찍어 주세요.` : `자동으로 ${G.FULL[k]}을 찾지 못했어요. 사진에서 보이면 점 몇 개로 그려 주세요. 없거나 아주 희미한 분도 많아요.`)
       : L.estimated ? "주름이 흐려서 보통 이 선이 있는 자리에 점선으로 표시했어요." : "빛나는 선이 실제 손금과 맞나요?";
     const acts = none
       ? `<button class="btn btn-gold" id="pf-tap">${ic("pen")}점 찍어 그리기</button><div class="row2"><button class="btn btn-line" id="pf-faint">잘 안 보여요</button><button class="btn btn-line" id="pf-noline">선이 없어요</button></div>`
@@ -206,7 +206,7 @@
     root.innerHTML = `<div class="card confirm rv">
       <div class="dots">${ORDER.map((x, i) => `<i class="${i === S.idx ? "on" : i < S.idx ? "done" : ""}"></i>`).join("")}</div>
       <div class="step">${S.idx + 1} / 6 · 선 확인</div>
-      <h3 style="color:${COLOR[k]}">${NAME[k]} ${stLabel(L)}</h3>
+      <h3 style="color:${COLOR[k]}">${G.FULL[k]} ${stLabel(L)}</h3>
       ${guideRow(k)}
       ${S.mismatch && S.idx === 0 ? `<p class="note" style="color:var(--warn);margin:0 0 12px">${ic("alert")}<span>사진 속 손이 ${S.res.side}으로 보여요. ${S.hand}잡이라면 ${S.hand} 사진이 더 정확해요.</span></p>` : ""}
       ${S.res.cut && S.idx === 0 ? `<p class="note" style="color:var(--warn);margin:0 0 12px">${ic("alert")}<span>손 일부가 사진 밖으로 잘렸어요. 선 위치가 덜 정확할 수 있어요.</span></p>` : ""}
@@ -245,7 +245,7 @@
     if (!tpl || tpl.length < 2) tpl = window.PalmDetect.seed(S.res, k);
     const cum = [0]; for (let i = 1; i < tpl.length; i++) cum.push(cum[i - 1] + Math.hypot(tpl[i][0] - tpl[i - 1][0], tpl[i][1] - tpl[i - 1][1]));
     const tpar = p => { let bi = 0, bd = 1e18; tpl.forEach((q, i) => { const d = (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2; if (d < bd) { bd = d; bi = i; } }); return cum[bi]; };
-    $("#pf-msg", root).innerHTML = `실제 <b style="color:${COLOR[k]}">${NAME[k]}</b> 주름을 따라 <b>3~5곳을 톡톡</b> 눌러 주세요. 흐린 점선은 보통 이 선이 있는 자리예요. 순서는 상관없어요.`;
+    $("#pf-msg", root).innerHTML = `실제 <b style="color:${COLOR[k]}">${G.FULL[k]}</b> 주름을 따라 <b>3~5곳을 톡톡</b> 눌러 주세요. 흐린 점선은 보통 이 선이 있는 자리예요. 순서는 상관없어요.`;
     $("#pf-acts", root).innerHTML = `<div class="tapbar" id="pf-tb"></div><button class="btn btn-gold" id="pf-save" disabled>3곳 이상 눌러 주세요</button>
       <div class="row2"><button class="btn btn-line" id="pf-undo">한 점 지우기</button><button class="btn btn-line" id="pf-faint">잘 안 보여요</button></div><button class="btn btn-ghost" id="pf-cancel">취소</button>`;
     let curve = null;
@@ -283,7 +283,7 @@
   }
   function editMode(k, pts) {
     const cps = resampleN(pts, 6), svg = $("#pf-st svg", root), [, , bw] = S.box, r = bw * 0.034;
-    $("#pf-msg", root).innerHTML = `<b>동그라미를 끌어서</b> 실제 ${NAME[k]} 주름 위에 맞춰 주세요.`;
+    $("#pf-msg", root).innerHTML = `<b>동그라미를 끌어서</b> 실제 ${G.FULL[k]} 주름 위에 맞춰 주세요.`;
     $("#pf-acts", root).innerHTML = `<div class="row2"><button class="btn btn-gold" id="pf-save">이대로 확정</button><button class="btn btn-line" id="pf-cancel">원래대로</button></div>`;
     const draw = () => {
       const curve = window.PalmDetect.catmull(cps, 10);

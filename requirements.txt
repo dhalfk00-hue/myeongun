@@ -6,3 +6,4 @@ korean_lunar_calendar==0.4.0
 pillow==13.0.0
 playwright==1.64.0
 tzdata
+numpy==2.3.5

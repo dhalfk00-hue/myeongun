@@ -302,7 +302,7 @@ def combined_sections(f, reading, r=None, today=None):
         el = r["five_elements_count"]
         lo = min(el, key=lambda k: el[k]); hi = max(el, key=lambda k: el[k])
         s["saju"].append(f"오행은 {EL_KO[hi]}({hi}) {el[hi]}개로 가장 많고 {EL_KO[lo]}({lo}) {el[lo]}개로 가장 적어요. "
-                         f"전통 오행론에선 {EL_KO[lo]} 기운이 맡는 {EL_BODY[lo]} 쪽을 평소에 아껴 쓰라고 봐요. {EL_LIFE[lo]}이 도움이 돼요.")
+                         f"전통 오행론에선 {EL_KO[lo]} 기운이 맡는 {EL_BODY[lo]} 쪽을 평소에 아껴 쓰라고 봐요. {EL_LIFE[lo]}{_josa(EL_LIFE[lo])} 도움이 돼요.")
         lf = f.get("life", {})
         if lf.get("arc") == "큼" or lf.get("clarity") == "강함":
             s["saju"].append("생명선이 힘 있게 크게 돌아 오행의 부족한 부분을 체력으로 받쳐 주는 손이에요.")
@@ -347,8 +347,94 @@ def combined_sections(f, reading, r=None, today=None):
             s["saju"].append("인성이 넉넉해 마음이 따뜻하고 배려가 깊어요.")
         else:
             s["saju"].append("사주가 한쪽으로 크게 치우치지 않아 사람을 두루 사귀는 편이에요.")
+        # 배우자궁(일지) + 배우자 별(남: 재성, 여: 관성)
+        dp = next((p for p in r.get("pillars", []) if p.get("name") == "일"), None)
+        if dp:
+            g = GROUP_OF.get(dp.get("branch_tengod"), "")
+            SP = {"비겁": "친구처럼 편하고 대등한 동반자", "식상": "표현이 많고 다정하게 챙겨 주는 인연", "재성": "현실적이고 살림을 함께 꾸리는 인연",
+                  "관성": "책임감 있고 반듯한 인연", "인성": "나를 이해하고 돌봐 주는 인연"}
+            if g:
+                s["saju"].append(f"배우자 자리(일지) {dp['gz'][1]}에 {dp['branch_tengod']}이 앉아 있어 {SP[g]}과 잘 맞아요.")
+        fem = str((r.get("input") or {}).get("gender", "")) in ("여", "F")
+        star = "관성" if fem else "재성"; n = cnt[star]
+        s["saju"].append(f"{'여성은 관성' if fem else '남성은 재성'}을 배우자 별로 보는데, 원국에 {n}개라 "
+                         + ("인연을 스스로 고르고 늦게 확신하는 편이에요. 서두르지 않는 게 좋아요." if n == 0
+                            else "인연이 또렷하게 들어오는 편이에요." if n <= 2 else "인연이 많은 편이라 고르는 눈이 중요해요."))
+        if r.get("seun"):
+            for sy in r["seun"][:3]:
+                tg = {GROUP_OF.get(sy.get("천간십신")), GROUP_OF.get(sy.get("지지십신"))}
+                if star in tg:
+                    s["timing"].append(f"{sy['년']}년 {sy['ko']}년은 배우자 별({star})이 들어오는 해라 인연·관계에 변화가 생기기 쉬워요.")
+                    break
     out.append(s)
     return out
+
+
+def advice(f, r, years, money=None):
+    """올해·내년 조언: 사주 세운(해의 기운) + 손금 특징을 규칙으로 합침. years = saju_summary의 years 카드 2개."""
+    f = f or {}
+    pres = lambda k: (f.get(k) or {}).get("presence")
+    sun_ok = pres("sun") in ("강함", "보통"); biz_ok = pres("business") in ("강함", "보통"); fate_ok = pres("fate") in ("강함", "보통")
+    heart = f.get("heart") or {}; life = f.get("life") or {}
+    seun = {s["년"]: s for s in (r or {}).get("seun", [])}
+    TIP = {
+        "재성": ("사주로 재물의 기운이 들어오는 해예요. " + ("재운선도 보이니 들어온 돈을 저축·자산으로 묶어 두면 오래 남아요." if sun_ok
+                 else "재운선이 아직 옅으니 큰 투자보다 고정 수입을 늘리는 쪽이 맞아요."),
+                "재물 기운이 이어지는 해라 지난해 모은 돈의 굴릴 곳을 정하기 좋아요. 다만 한 곳에 몰지 말고 나눠 두세요."),
+        "식상": ("표현·기획의 기운이 강한 해라 " + ("사업선이 뚜렷한 손과 맞물려 부업·내 일을 시작하기 좋아요." if biz_ok
+                 else "아이디어를 글·말·콘텐츠로 꺼내 두면 기회로 이어져요."),
+                 "재주가 밖으로 드러나는 해예요. 만들어 둔 것을 알리고 값을 매기는 데 힘을 쓰세요."),
+        "관성": ("직장·명예의 기운이 들어와 " + ("운명선이 받쳐 주니 승진·이직 제안을 적극적으로 검토해 보세요." if fate_ok
+                 else "책임 있는 자리를 맡되 무리한 약속은 줄이세요."),
+                 "자리와 책임이 무거워지는 해예요. 맡은 일의 마감과 규칙을 지키는 것이 곧 평판이 돼요."),
+        "인성": ("공부·자격의 기운이 있는 해라 자격증·배움에 쓴 시간이 다음 해의 돈이 돼요.",
+                 "도와주는 사람·문서 운이 이어지는 해예요. 계약서·서류는 꼼꼼히 읽고, 윗사람 조언을 흘려듣지 마세요."),
+        "비겁": ("사람·경쟁의 기운이 강한 해라 동업·보증·돈 거래는 조심하고, 내 몫을 분명히 하세요.",
+                 "경쟁이 이어지는 해예요. 남과 비교하기보다 내 속도로 실력을 쌓는 쪽이 이기는 길이에요."),
+    }
+    used = set(); out = []
+    for i, y in enumerate(years or []):
+        yr = y.get("year"); sy = seun.get(yr) or {}
+        gs = [g for g in (GROUP_OF.get(sy.get("천간십신")), GROUP_OF.get(sy.get("지지십신"))) if g]
+        tips = []
+        for g in dict.fromkeys(gs):
+            tips.append(TIP[g][1] if g in used else TIP[g][0]); used.add(g)
+        if not tips:
+            tips.append("큰 기운의 변화가 적은 해라 지금 하는 일을 꾸준히 다지는 것이 가장 좋아요.")
+        if i == 0 and life.get("clarity") == "약함":
+            tips.append("생명선이 차분한 편이니 바쁜 달일수록 휴식부터 챙기세요.")
+        elif i == 0 and life.get("clarity") in ("강함", "보통"):
+            tips.append("생명선이 뚜렷해 체력이 받쳐 주니, 미뤄 둔 일을 올해 시작해도 좋아요.")
+        if i == 1 and heart.get("clarity") in ("강함", "보통"):
+            tips.append("감정선이 뚜렷해 관계 운이 받쳐 줘요. 중요한 사람과의 약속을 미루지 마세요.")
+        out.append({"year": yr, "gz": y.get("gz"), "title": y.get("title"), "star": y.get("star"), "saju": y.get("line"), "months": y.get("months"),
+                    "tips": tips[:3], "label": "올해" if i == 0 else "내년"})
+    return out
+
+
+def pairs(r, today=None):
+    """6대 선마다 함께 보는 사주 요소(무료 요약 칩). 규칙 기반·짧은 글자만."""
+    if not r:
+        return {}
+    today = today or date.today()
+    cnt = {k: 0 for k in I.GROUP_OFFSET}
+    for k, v in r["ten_gods_count"].items():
+        cnt[GROUP_OF[k]] += v
+    age = today.year - int(r["solar_date"][:4])
+    d = _daeun_at(r["daeun"], age)
+    dz = f"지금 {d['ko']} 대운({'·'.join(x for x in _daeun_tag(d) if x)})" if d else "대운"
+    el = r["five_elements_count"]; lo = min(el, key=lambda k: el[k]); hi = max(el, key=lambda k: el[k])
+    dm = r["day_master"]
+    dp = next((p for p in r.get("pillars", []) if p.get("name") == "일"), None)
+    fem = str((r.get("input") or {}).get("gender", "")) in ("여", "F")
+    return {
+        "sun": [f"재성(재물) {cnt['재성']}개", f"식상(돈 버는 재주) {cnt['식상']}개", dz],
+        "business": [f"관성(직장·명예) {cnt['관성']}개", f"식상(내 일·표현) {cnt['식상']}개", dz],
+        "fate": [dz, f"관성 {cnt['관성']}개"],
+        "life": [f"오행 많음 {EL_KO[hi]}({hi}) {el[hi]}", f"오행 적음 {EL_KO[lo]}({lo}) {el[lo]}"],
+        "head": [f"일간 {dm['ko']}{EL_KO[dm['element']]}({dm['stem']})", f"인성(공부) {cnt['인성']}개", f"식상(표현) {cnt['식상']}개"],
+        "heart": ([f"배우자 자리 {dp['gz'][1]} · {dp['branch_tengod']}"] if dp else []) + [f"배우자 별 {'관성' if fem else '재성'} {cnt['관성' if fem else '재성']}개", f"비겁(자존심) {cnt['비겁']}개"],
+    }
 
 
 def build(f, reading, r=None, today=None):

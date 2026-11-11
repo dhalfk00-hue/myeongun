@@ -42,9 +42,8 @@ def assemble(args, now):
         import palm as PM
         palm = args.palm_json if isinstance(args.palm_json, dict) else json.load(open(args.palm_json))
         if args.palm_photo: palm["photo"] = args.palm_photo
-    pages = [rep.cover(palm), rep.p_chart(), rep.p_yongsin(), rep.p_persona_money(), rep.p_job_love_health(), rep.p_daeun()]
-    pages += rep.p_years()
-    pages.append(rep.p_decade())
+    # 사주+손금 함께 볼 때는 손금(재운선·대박손금 → 6대 선 × 사주) → 사주×손금 종합 → 나머지 사주 순서
+    pages = [rep.cover(palm)]
     hooks = {"__PALM_KEY2__": "", "__PALM_HEALTH__": "", "__PALM_TIMING__": "", "__PALM_CLOSING__": "", "__PALM_LIMIT__": ""}
     assets = {}
     if palm:
@@ -54,6 +53,10 @@ def assemble(args, now):
         rep.no += 1
         pages += ppages
         pages.append(rep.p_synth(items, lucky, palm))
+    pages += [rep.p_chart(), rep.p_yongsin(), rep.p_persona_money(), rep.p_job_love_health(), rep.p_daeun()]
+    pages += rep.p_years()
+    pages.append(rep.p_decade())
+    if palm:
         fl = palm.get("flags", {})
         js = fl.get("jaeun", {}).get("state", "none")
         hooks["__PALM_KEY2__"] = f"손금의 재운선은 {items[0]['tag']}이에요."

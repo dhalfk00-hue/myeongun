@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0d14">
 <meta name="color-scheme" content="dark">
-<meta name="description" content="명운 · 2027 정미년 신년운세, 결혼 궁합, 사진으로 보는 손금">
-<title>명운 · 사주 · 궁합 · 손금</title>
+<meta name="description" content="명운 · 사주와 손금을 함께 읽는 교차 풀이 · 2027 정미년 신년운세 · 결혼 궁합">
+<title>명운 · 사주 × 손금 교차 풀이 · 궁합</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/static/icons/icon-192.png" sizes="192x192">
 <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
 <link rel="preload" href="/static/fonts/notoserifkr-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/static/fonts/pretendard-400.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/static/m.css?v=4">
+<link rel="stylesheet" href="/static/m.css?v=5">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -44,18 +44,19 @@
   <section class="view" id="v-home">
     <div class="hero-home">
       <div class="ring rv" id="ring"></div>
-      <div class="yr rv" style="--i:1">2027 · 丁未年</div>
-      <h1 class="rv" style="--i:2">정미년 신년운세</h1>
-      <p class="rv" style="--i:3">붉은 양의 해. 태어난 날과 시로 내년의 흐름, 움직일 달과 쉬어 갈 달을 짚어 드려요.</p>
-      <button class="btn btn-gold rv" style="--i:4" data-go="saju">내 신년운세 보기</button>
+      <div class="yr rv" style="--i:1">四柱 × 手相 · 2027 丁未年</div>
+      <h1 class="rv" style="--i:2">사주와 손금,<br>함께 읽어요</h1>
+      <p class="rv" style="--i:3">태어난 날의 기운과 손에 새겨진 선을 하나로 맞대어 읽는 <b class="gold">교차 풀이</b>. 재운선과 사주 재물운, 6대 선과 대운, 올해·내년 움직일 때까지 한 번에 짚어 드려요.</p>
+      <ol class="flow3 rv" style="--i:4"><li><em>1</em>생년월일</li><li><em>2</em>손바닥 사진</li><li><em>3</em>사주 × 손금 풀이</li></ol>
+      <button class="btn btn-gold rv" style="--i:5" data-go="saju">사주+손금 함께 보기</button>
+      <p class="mini rv" style="--i:6;margin:10px 0 0">손 사진이 없으면 사주만 먼저 볼 수도 있어요</p>
     </div>
     <div class="sect rv" style="--i:5"><b>오늘의 풀이</b><span>READINGS</span></div>
     <div class="menu">
-      <button class="mcard rv" style="--i:6" data-go="saju"><span class="ic">命</span><div><b>사주 · 신년운세</b><p>타고난 기운, 재물 그릇, 2027년 운세</p></div><svg class="i go"><use href="#i-chev"/></svg></button>
+      <button class="mcard main rv" style="--i:6" data-go="saju"><span class="ic">命<small>手</small></span><div><b>사주 × 손금 교차 풀이<span class="new">함께 보기</span></b><p>재운선 × 재물운 · 6대 선 × 사주 · 2027년 운세까지 한 장에</p></div><svg class="i go"><use href="#i-chev"/></svg></button>
       <button class="mcard rv" style="--i:7" data-go="gunghap"><span class="ic">合</span><div><b>결혼 궁합</b><p>두 사람의 끌림과 조심할 자리, 결혼 적기</p></div><svg class="i go"><use href="#i-chev"/></svg></button>
-      <button class="mcard rv" style="--i:8" data-go="palm"><span class="ic">手</span><div><b>손금 · 재물운<span class="new">자동 인식</span></b><p>내 손 사진 위에 6대 선을 금빛으로 그려 드려요</p></div><svg class="i go"><use href="#i-chev"/></svg></button>
     </div>
-    <div class="prem rv" style="--i:9"><span class="doc">命</span><div><b>프리미엄 감정서 10~13쪽</b><p>대운 10년 흐름 · 월별 운세 · 개운법까지, PDF로 소장</p></div></div>
+    <div class="prem rv" style="--i:9"><span class="doc">命</span><div><b>사주 × 손금 교차 감정서 13쪽</b><p>6대 선 × 사주 · 돈 들어오는 시기 · 대운 10년 · 월별 운세 · 개운법, PDF로 소장</p></div></div>
     <div class="trust rv" style="--i:10">
       <span><svg class="i"><use href="#i-shield"/></svg>손 사진은<br>폰 밖으로 안 나가요</span>
       <span><svg class="i"><use href="#i-compass"/></svg>만세력<br>출생지 경도 보정</span>
@@ -66,20 +67,18 @@
 
   <section class="view" id="v-saju"></section>
   <section class="view" id="v-gunghap"></section>
-  <section class="view" id="v-palm"></section>
 </div>
 
 <nav class="tabbar"><div class="in">
   <button data-go="home" class="on"><svg class="i"><use href="#i-home"/></svg>홈</button>
-  <button data-go="saju"><svg class="i"><use href="#i-moon"/></svg>사주</button>
+  <button data-go="saju"><svg class="i"><use href="#i-hand"/></svg>사주+손금</button>
   <button data-go="gunghap"><svg class="i"><use href="#i-rings"/></svg>궁합</button>
-  <button data-go="palm"><svg class="i"><use href="#i-hand"/></svg>손금</button>
 </div></nav>
 
-<script src="/static/m.js?v=3"></script>
-<script src="/static/palm_detect.js?v=6"></script>
-<script src="/static/palm_guide.js?v=6"></script>
-<script src="/static/palm_flow.js?v=6"></script>
+<script src="/static/m.js?v=4"></script>
+<script src="/static/palm_detect.js?v=7"></script>
+<script src="/static/palm_guide.js?v=7"></script>
+<script src="/static/palm_flow.js?v=7"></script>
 <script>
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 </script>

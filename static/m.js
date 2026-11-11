@@ -1,4 +1,4 @@
-/* 명운 앱 화면 (사주 · 궁합 · 손금 공통). 외부 API·추적 없음. */
+/* 명운 앱 화면 (사주 × 손금 교차 풀이 · 궁합). 외부 API·추적 없음. */
 (function () {
   "use strict";
   const $ = (s, el = document) => el.querySelector(s), $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -26,7 +26,8 @@
   /* ---------- 라우팅 ---------- */
   const views = {};
   function go(v, push = true) {
-    if (!["home", "saju", "gunghap", "palm"].includes(v)) v = "home";
+    if (v === "palm") v = "saju";   // 손금은 사주와 함께 보는 한 흐름(생년월일 → 손금 → 교차 풀이)
+    if (!["home", "saju", "gunghap"].includes(v)) v = "home";
     $$(".view").forEach(s => s.classList.toggle("on", s.id === "v-" + v));
     $$(".tabbar button").forEach(b => b.classList.toggle("on", b.dataset.go === v));
     $("#back").hidden = v === "home";
@@ -233,21 +234,31 @@
 
   /* ---------- 사주 ---------- */
   views.saju = { init() { sajuForm(); } };
+  const steps3 = cur => `<ol class="flow3 in">${["생년월일", "손바닥 사진", "사주 × 손금 풀이"].map((t, i) => `<li class="${i + 1 === cur ? "on" : i + 1 < cur ? "done" : ""}"><em>${i + 1 < cur ? "✓" : i + 1}</em>${t}</li>`).join("")}</ol>`;
   function sajuForm(err) {
     const el = $("#v-saju");
-    el.innerHTML = `<div class="card rv"><div class="step">四柱 · 2027 丁未年</div><div class="title">태어난 순간을 알려 주세요</div>
-      <p class="lead">무료로 핵심 3가지와 2026·2027년 운세 지수를 보여 드려요.</p>
+    el.innerHTML = `<div class="card rv">${steps3(1)}<div class="step">四柱 × 手相 · 교차 풀이</div><div class="title">태어난 순간을 알려 주세요</div>
+      <p class="lead">다음 단계에서 손바닥 사진 한 장을 찍으면, 사주와 손금을 <b class="gold">함께</b> 맞대어 풀어 드려요.</p>
       ${birthForm("s", { value: store.get("me") || {} })}
       <p class="err" id="s-err">${esc(err || "")}</p>
-      <button class="btn btn-gold" id="s-go" style="margin-top:18px">명식 세우기</button>
-      <p class="note">${ic("shield")}<span>회원가입 없이 바로 봐요. 입력한 정보는 풀이에만 쓰고 24시간 뒤 서버에서 지워져요.</span></p></div>`;
+      <button class="btn btn-gold" id="s-go" style="margin-top:18px">${ic("hand")}다음: 손금 보기</button>
+      <button class="btn btn-ghost" id="s-only" style="margin-top:6px">손금 없이 사주만 보기</button>
+      <p class="note">${ic("shield")}<span>회원가입 없이 바로 봐요. 입력한 정보는 풀이에만 쓰고 24시간 뒤 서버에서 지워져요. 손 사진은 폰 밖으로 나가지 않아요.</span></p></div>`;
     wireBirth(el, "s");
-    $("#s-go", el).onclick = async () => {
-      let b; try { b = readBirth(el, "s"); } catch (e) { $("#s-err", el).textContent = e.message; return; }
-      store.set("me", b);
-      try { const d = await withLoading(el, ["만세력에서 네 기둥을 세우는 중", "다섯 기운의 균형을 재는 중", "2027 丁未년의 흐름을 읽는 중"], api("/api/v2/saju", { birth: b })); sajuResult(d); }
-      catch (e) { sajuForm(e.message); }
-    };
+    const read = () => { try { const b = readBirth(el, "s"); store.set("me", b); return b; } catch (e) { $("#s-err", el).textContent = e.message; return null; } };
+    $("#s-go", el).onclick = () => { const b = read(); if (b) palmStep(b); };
+    $("#s-only", el).onclick = () => { const b = read(); if (b) sajuOnly(b); };
+  }
+  function palmStep(b) {
+    const el = $("#v-saju");
+    if (!window.PalmFlow) return sajuOnly(b);
+    window.PalmFlow.init(el, { birth: b, steps: steps3, onSkip: () => sajuOnly(b), onEdit: () => sajuForm() });
+    window.scrollTo({ top: 0 });
+  }
+  async function sajuOnly(b) {
+    const el = $("#v-saju");
+    try { const d = await withLoading(el, ["만세력에서 네 기둥을 세우는 중", "다섯 기운의 균형을 재는 중", "2027 丁未년의 흐름을 읽는 중"], api("/api/v2/saju", { birth: b })); sajuResult(d, b); }
+    catch (e) { sajuForm(e.message); }
   }
   function yearCard(y, ny, i) {
     if (!ny) return `<div ${rv(i, "yearcard sm")}><div class="yy">${y.gz}<small>${y.year}</small></div><div class="eb">올해 · ${y.ko}년</div>
@@ -259,32 +270,42 @@
   }
   const keysHTML = (k3, i0, title = "한눈에 보는 핵심 3가지", sub = "") => `<div class="keys"><div ${rv(i0, "h3")}>${title}</div>${sub ? `<p class="mini">${sub}</p>` : ""}
     ${k3.map((k, i) => `<div ${rv(i0 + 1 + i, "key")}><span class="n gt">${String(i + 1).padStart(2, "0")}</span><b class="t">${k.title}</b><p>${k.text}</p></div>`).join("")}</div>`;
-  function sajuResult(d) {
-    const el = $("#v-saju"), [y0, y1] = d.years, ij = ilju(d.pillars), pk = Math.max(...d.decade.map(x => x.star));
-    el.innerHTML = `
-      <div ${rv(0, "hero")}><div class="wm">${esc(ij[0] || "")}</div>
-        <div class="step">四柱命式</div>
+  /* 사주 결과 조각: 사주만 보기와 사주 × 손금 교차 풀이에서 함께 씀 */
+  const sajuHero = (d, badge) => { const [, y1] = d.years, ij = ilju(d.pillars); return `<div ${rv(0, "hero")}><div class="wm">${esc(ij[0] || "")}</div>
+        ${badge ? `<div class="xbadge">${badge}</div>` : ""}<div class="step">四柱命式</div>
         <div class="who">${esc(d.who)} · ${d.gender === "F" ? "여성" : "남성"} · ${esc(d.place)} 출생</div>
         <div class="ilju"><b class="gt">${esc(ij)}</b><span><em>${esc(d.day_master.ch)} ${esc(d.day_master.ko)} 일간</em>${esc(d.day_master.img)}</span></div>
-        <div class="hl"><small>2027 丁未年 · 정미년</small><b>${esc(y1.title)}</b>${stars(y1.star)}</div>
-        <div class="meta">${esc(d.date_label)}</div></div>
-      <div ${rv(1, "card")}><div class="step">네 기둥 · 여덟 글자</div>
+        ${badge ? "" : `<div class="hl"><small>2027 丁未年 · 정미년</small><b>${esc(y1.title)}</b>${stars(y1.star)}</div>`}
+        <div class="meta">${esc(d.date_label)}</div></div>`; };
+  const pillarsCard = (d, i) => `<div ${rv(i, "card")}><div class="step">네 기둥 · 여덟 글자</div>
         ${pillarsHTML(d.pillars)}
         ${d.time_note ? `<p class="note">${ic("clock")}<span>${esc(d.time_note)}</span></p>` : ""}
-        <div class="chips"><span><small>신강약</small>${esc(d.strength).replace(/\(.*\)/, "")}</span><span><small>격국</small>${esc(d.gyeok)}</span><span><small>용신</small>${EL[d.yong]}</span><span><small>희신</small>${EL[d.hee]}</span></div></div>
-      ${yearCard(y1, true, 2)}
-      ${keysHTML(d.key3, 3)}
-      <div ${rv(7, "card")}><div class="step">五行 · 다섯 기운</div><h3>오행의 균형</h3>${fiveHTML(d.elements, d)}</div>
-      ${yearCard(y0, false, 8)}
-      <div ${rv(9, "card")}><div class="step">十年 · 앞으로 10년</div><h3>10년 운세 흐름</h3>
+        <div class="chips"><span><small>신강약</small>${esc(d.strength).replace(/\(.*\)/, "")}</span><span><small>격국</small>${esc(d.gyeok)}</span><span><small>용신</small>${EL[d.yong]}</span><span><small>희신</small>${EL[d.hee]}</span></div></div>`;
+  const fiveCard = (d, i) => `<div ${rv(i, "card")}><div class="step">五行 · 다섯 기운</div><h3>오행의 균형</h3>${fiveHTML(d.elements, d)}</div>`;
+  const decadeCard = (d, i) => { const pk = Math.max(...d.decade.map(x => x.star)), y1 = d.years[1]; return `<div ${rv(i, "card")}><div class="step">十年 · 앞으로 10년</div><h3>10년 운세 흐름</h3>
         <div class="decade">${d.decade.map(x => `<div class="${x.star === pk ? "pk" : ""}${x.year === y1.year ? " cur" : ""}"><em>${x.star === pk ? "★" : ""}</em><i style="height:${10 + x.star * 15}px;opacity:${0.4 + x.star * 0.12}"></i><span>'${String(x.year).slice(2)}</span></div>`).join("")}</div>
-        <p class="mini" style="margin:14px 0 0">어느 해가 왜 좋은지, 지켜야 할 해는 언제인지는 전체 감정서의 10년 시기표에 있어요.</p></div>
-      <div id="s-lock" class="rv" style="--i:10">${lockHTML(d)}</div>
+        <p class="mini" style="margin:14px 0 0">어느 해가 왜 좋은지, 지켜야 할 해는 언제인지는 전체 감정서의 10년 시기표에 있어요.</p></div>`; };
+  function sajuResult(d, b) {
+    const el = $("#v-saju"), [y0, y1] = d.years;
+    b = b || store.get("me");
+    el.innerHTML = `
+      ${sajuHero(d)}
+      <div ${rv(1, "card xcta")}><div class="step">手相 · 손금도 함께</div><h3>손금을 더하면 교차 풀이가 열려요</h3>
+        <p class="lead" style="font-size:14px">손바닥 사진 한 장이면 재운선 × 사주 재물운, 6대 선 × 대운까지 맞대어 봐 드려요. 사진은 폰 밖으로 나가지 않아요.</p>
+        <button class="btn btn-gold" id="s-addpalm" style="margin-top:14px">${ic("hand")}손금 더해서 함께 보기</button></div>
+      ${pillarsCard(d, 2)}
+      ${yearCard(y1, true, 3)}
+      ${keysHTML(d.key3, 4)}
+      ${fiveCard(d, 8)}
+      ${yearCard(y0, false, 9)}
+      ${decadeCard(d, 10)}
+      <div id="s-lock" class="rv" style="--i:11">${lockHTML(d)}</div>
       <button class="btn btn-line" id="s-again">다른 생년월일로 보기</button>
       <p class="foot">전통 명리 해석에 기반한 재미·참고용 풀이예요. 중요한 결정은 전문가와 상의하세요.</p>`;
     const rewire = () => { $("#s-lock", el).innerHTML = lockHTML(d); wireLock(el, d, rewire); };
     wireLock(el, d, rewire);
     $("#s-again", el).onclick = () => sajuForm();
+    $("#s-addpalm", el).onclick = () => b ? palmStep(b) : sajuForm();
   }
 
   /* ---------- 궁합 ---------- */
@@ -338,7 +359,6 @@
     $("#g-again", el).onclick = () => ghForm();
   }
 
-  views.palm = { init() { window.PalmFlow && window.PalmFlow.init($("#v-palm")); } };
   views.home = { init() { ringHome(); } };
   function ringHome() {
     const r = $("#ring"); if (!r || r.dataset.ok) return; r.dataset.ok = 1;
@@ -358,7 +378,8 @@
   }
 
   /* ---------- 시작 ---------- */
-  window.MW = { $, $$, esc, api, store, stars, ic, sleep, withLoading, rv, birthForm, wireBirth, readBirth, pillarsHTML, lockHTML, wireLock, loadingHTML, unlockOf };
+  window.MW = { $, $$, esc, api, store, stars, ic, sleep, withLoading, rv, birthForm, wireBirth, readBirth, pillarsHTML, lockHTML, wireLock, loadingHTML, unlockOf,
+    saju: { hero: sajuHero, pillarsCard, fiveCard, decadeCard, yearCard, keysHTML, form: () => sajuForm() } };
   (async () => {
     try { REGIONS = (await api("/api/v2/places")).regions; } catch { }
     try { CONFIG = await api("/api/v2/config"); } catch { }

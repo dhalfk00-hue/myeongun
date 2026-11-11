@@ -41,7 +41,7 @@ BANNED = ("\ubc31\uc6b4", "\ub3c4\uc0ac", "\ucca0\ud559\uc6d0", "\ube14\ub85c\ua
 PRODUCTS = {   # Play Console 인앱 상품 ID 후보 · 가격(원)은 나중에 콘솔에서 정함
     "saju": {"id": "saju_full_report", "price": 15000, "title": "사주 종합 감정서", "pages": 10},
     "gunghap": {"id": "gunghap_full_report", "price": 15000, "title": "결혼 궁합 감정서", "pages": 7},
-    "palm": {"id": "palm_saju_report", "price": 15000, "title": "사주 · 손금 종합 감정서", "pages": 13},
+    "palm": {"id": "palm_saju_report", "price": 15000, "title": "사주 × 손금 교차 감정서", "pages": 13},
 }
 
 
@@ -474,8 +474,11 @@ def api_palm(req: PalmReq):
     if p:
         spec = palm_spec(req)
         summ = saju_summary(p, spec)
-        out.update({"rid": summ["rid"], "saju": {k: summ[k] for k in ("who", "pillars", "key3", "years", "date_label", "place", "time_note")},
-                    "locked": summ["locked"]})
+        out.update({"rid": summ["rid"], "saju": {k: summ[k] for k in ("who", "gender", "pillars", "key3", "years", "decade", "date_label", "place", "time_note",
+                                                                         "elements", "day_master", "yong", "hee", "gyeok", "strength")},
+                    "locked": ["손금 6대 선 × 사주 교차 풀이 전체", "돈 들어오는 시기(재운선 × 대운·세운)", "손금 유년법 타임라인"] + [x for x in summ["locked"] if "손금" not in x]})
+        out["advice"] = PS.advice(res["features"], r, summ["years"])
+        out["pairs"] = PS.pairs(r, now.date() if hasattr(now, "date") else None)
         out["unlocked"] = _unlock_ok(summ["rid"], req.unlock)
     # 무료: 재물운 한 줄 + 대박손금 표식 + 선별 한 줄 / 잠금: 돈 들어오는 시기·선별 상세·사주 교차
     m = out["money"]

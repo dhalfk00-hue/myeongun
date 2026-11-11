@@ -1,7 +1,7 @@
 {
-  "name": "명운 · 사주 궁합 손금",
+  "name": "명운 · 사주×손금 교차 풀이 · 궁합",
   "short_name": "명운",
-  "description": "2027 정미년 신년운세, 결혼 궁합, 손 사진으로 보는 손금 재물운",
+  "description": "사주와 손금을 함께 읽는 교차 풀이 · 2027 정미년 신년운세 · 결혼 궁합",
   "id": "/",
   "start_url": "/?src=app",
   "scope": "/",
@@ -19,8 +19,7 @@
     {"src": "/static/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
   ],
   "shortcuts": [
-    {"name": "신년운세", "url": "/#saju", "icons": [{"src": "/static/icons/icon-96.png", "sizes": "96x96"}]},
-    {"name": "궁합", "url": "/#gunghap", "icons": [{"src": "/static/icons/icon-96.png", "sizes": "96x96"}]},
-    {"name": "손금", "url": "/#palm", "icons": [{"src": "/static/icons/icon-96.png", "sizes": "96x96"}]}
+    {"name": "사주+손금", "url": "/#saju", "icons": [{"src": "/static/icons/icon-96.png", "sizes": "96x96"}]},
+    {"name": "궁합", "url": "/#gunghap", "icons": [{"src": "/static/icons/icon-96.png", "sizes": "96x96"}]}
   ]
 }

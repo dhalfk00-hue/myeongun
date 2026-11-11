@@ -7,16 +7,18 @@
   const G = window.PalmGuide;
   const ORDER = G.ORDER, NAME = G.NAME, COLOR = G.COLOR;          // 돈 먼저: 재운선 → 사업선 → 운명선 → 생명선 → 두뇌선 → 감정선
   const RULE = { sun: "태양선(재물선)", business: "사업선", fate: "운명선", life: "생명선", head: "두뇌선", heart: "감정선" };
-  let S = null, root = null;
+  let S = null, root = null, OPT = {};
+  const BADGE = "四柱 × 手相 · 사주 × 손금 교차 풀이";
   const dom = () => store.get("palmDom") === "왼손" ? "왼손" : "오른손";
   const mir = () => (S && S.res ? S.res.side : dom()) === "왼손";
   const avg = a => a.reduce((x, y) => x + y, 0) / (a.length || 1);
 
   /* ---------- 1. 촬영 안내 ---------- */
   function capture(msg) {
-    const me = store.get("me"), d = dom();
-    root.innerHTML = `<div class="card pcap rv"><div class="step">手相 · 손금 재물운</div><div class="title">손바닥 사진 한 장이면 돼요</div>
-      <p class="lead">재물운은 <b>주로 쓰는 손</b>으로 봐요. 남녀 구분 없이 같은 기준이에요.</p>
+    const me = store.get("me"), d = dom(), B = OPT.birth;
+    root.innerHTML = `<div class="card pcap rv">${B ? `${OPT.steps ? OPT.steps(2) : ""}${birthChip(B)}` : ""}
+      <div class="step">${B ? "手相 · 사주와 함께 볼 손금" : "手相 · 손금 재물운"}</div><div class="title">손바닥 사진 한 장이면 돼요</div>
+      <p class="lead">${B ? "방금 넣은 사주와 이 손금을 맞대어 읽어요. " : ""}재물운은 <b>주로 쓰는 손</b>으로 봐요. 남녀 구분 없이 같은 기준이에요.</p>
       <div class="seg" id="pf-dom" style="margin-top:16px">${["오른손", "왼손"].map(h => `<button type="button" data-v="${h}"${h === d ? ' class="on"' : ""}>${h}잡이</button>`).join("")}</div>
       <div class="frame" id="pf-frame">${G.svg({ ghost: true, mirror: d === "왼손" })}<i class="scan"></i><p><b id="pf-dt">${d}</b> 손바닥을 쫙 펴고 손가락은 붙여 주세요</p></div>
       <button type="button" class="gbtn" id="pf-guide">${G.svg({ mirror: d === "왼손" })}<span>재운선은 어디? <b>6개 선 위치 안내</b> 보기</span></button>
@@ -26,20 +28,25 @@
       ${msg ? `<p class="err">${esc(msg)}</p>` : ""}
       <div class="row2"><label class="btn btn-gold">${ic("cam")}촬영하기<input type="file" accept="image/*" capture="environment" hidden></label>
         <label class="btn btn-line">${ic("img")}앨범에서<input type="file" accept="image/*" hidden></label></div>
-      <label class="chk" style="margin-top:20px"><input type="checkbox" id="pf-use"${me ? " checked" : ""}> 내 사주와 함께 보기 <span class="mini">돈 들어오는 시기 · 감정서</span></label>
-      <div id="pf-bw"${me ? "" : " hidden"}>${birthForm("pf", { value: me || {} })}</div>
+      ${B ? `<button class="btn btn-ghost" id="pf-sajuonly" style="margin-top:8px">손금 없이 사주만 보기</button>` : `<label class="chk" style="margin-top:20px"><input type="checkbox" id="pf-use"${me ? " checked" : ""}> 내 사주와 함께 보기 <span class="mini">돈 들어오는 시기 · 감정서</span></label>
+      <div id="pf-bw"${me ? "" : " hidden"}>${birthForm("pf", { value: me || {} })}</div>`}
       <p class="privacy-note">${ic("shield")}<span>사진은 이 폰 안에서만 분석해요. 서버로 보내지도, 저장하지도 않아요.</span></p></div>`;
-    wireBirth(root, "pf");
+    if (B) { $("#pf-sajuonly", root).onclick = () => OPT.onSkip && OPT.onSkip(); $("#pf-bedit", root).onclick = () => OPT.onEdit && OPT.onEdit(); }
+    else wireBirth(root, "pf");
     $("#pf-dom", root).onclick = e => { const b = e.target.closest("button"); if (!b) return; store.set("palmDom", b.dataset.v);
       $$("#pf-dom button", root).forEach(x => x.classList.toggle("on", x === b)); $("#pf-dt", root).textContent = b.dataset.v;
       $("#pf-frame svg", root).outerHTML = G.svg({ ghost: true, mirror: b.dataset.v === "왼손" }); $("#pf-guide svg", root).outerHTML = G.svg({ mirror: b.dataset.v === "왼손" }); };
     $("#pf-guide", root).onclick = () => G.open({ mirror: dom() === "왼손" });
-    $("#pf-use", root).onchange = e => { $("#pf-bw", root).hidden = !e.target.checked; };
+    $("#pf-use", root) && ($("#pf-use", root).onchange = e => { $("#pf-bw", root).hidden = !e.target.checked; });
     $$("input[type=file]", root).forEach(inp => inp.onchange = () => { const f = inp.files[0]; inp.value = ""; if (f) start(f); });
     window.PalmDetect.loadLandmarker().catch(() => { });
     if (!store.get("palmGuide") && !document.querySelector(".pguide-bg")) G.open({ first: true, mirror: d === "왼손", onClose: () => store.set("palmGuide", 1) });
   }
 
+  function birthChip(b) {
+    const [y, m, d] = b.date.split("-"), t = b.time ? (b.time2 ? `${b.time}~${b.time2}` : b.time) : "시간 모름";
+    return `<div class="bchip">${ic("check")}<span><b>${esc(b.name || "나")}</b> · ${b.gender === "F" ? "여성" : "남성"} · ${b.calendar === "lunar" ? "음력" : "양력"} ${+y}.${+m}.${+d}${b.leap ? "(윤)" : ""} · ${esc(t)} · ${esc(b.place)}</span><button type="button" id="pf-bedit">수정</button></div>`;
+  }
   async function loadImage(file, max = 1600) {
     const url = URL.createObjectURL(file), img = new Image(); img.src = url; await img.decode();
     const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement("canvas");
@@ -49,8 +56,8 @@
 
   /* ---------- 2. 품질 확인 + 자동 검출 ---------- */
   async function start(file, force) {
-    let birth = null;
-    if ($("#pf-use", root)?.checked) { try { birth = readBirth(root, "pf"); store.set("me", birth); } catch (e) { alert(e.message); return; } }
+    let birth = OPT.birth || null;
+    if (!birth && $("#pf-use", root)?.checked) { try { birth = readBirth(root, "pf"); store.set("me", birth); } catch (e) { alert(e.message); return; } }
     const canvas = file instanceof HTMLCanvasElement ? file : await loadImage(file);
     S = { canvas, birth, hand: dom(), edits: {}, done: {}, idx: 0, shots: {}, hint: {} };
     const q = window.PalmDetect.quality(canvas); S.q = q;
@@ -117,7 +124,7 @@
       <button class="btn btn-ghost" style="margin-top:6px" id="pf-force">그래도 이 사진으로 볼게요</button></div>`;
     const c = $("#pf-q", root), k = 520 / S.canvas.width; c.width = 520; c.height = Math.round(S.canvas.height * k); c.getContext("2d").drawImage(S.canvas, 0, 0, c.width, c.height);
     $("#pf-re", root).onclick = () => capture();
-    $("#pf-force", root).onclick = () => { const cv = S.canvas, b = S.birth; capture(); if (b) { } start(cv, true); };
+    $("#pf-force", root).onclick = () => { const cv = S.canvas; start(cv, true); };
   }
   function progress(t) { root.innerHTML = `${loadingHTML(esc(t), "이 폰 안에서 분석 중", "手")}<p class="privacy-note" style="max-width:300px;margin:0 auto">${ic("shield")}<span>사진은 서버로 보내지 않아요</span></p>`; }
 
@@ -312,7 +319,7 @@
   }
   async function finish() {
     if (Object.keys(S.edits).length) window.PalmDetect.refine(S.res, S.edits);
-    progress("수상학 규칙과 사주로 풀이하는 중");
+    progress(S.birth ? "사주와 손금을 함께 풀이하는 중" : "수상학 규칙으로 풀이하는 중");
     try { S.reading = await api("/api/v2/palm", payload()); S.rid = S.reading.rid; }
     catch (e) { root.innerHTML = `<div class="card"><p class="err">${esc(e.message)}</p><button class="btn btn-gold" id="pf-re">처음부터</button></div>`; $("#pf-re", root).onclick = () => capture(); return; }
     if (S.rid && unlockOf(S.rid) && !S.reading.unlocked) { try { S.reading = await api("/api/v2/palm", payload()); } catch { } }
@@ -321,6 +328,7 @@
 
   /* ---------- 5. 결과 ---------- */
   function result() {
+    if (S.reading && S.reading.saju) return crossResult();
     const d = S.reading, F = d.free || {}, found = ORDER.filter(k => S.res.lines[k]?.img?.length);
     const lineRead = k => (d.lines || []).find(x => x.name === RULE[k]);
     root.innerHTML = `
@@ -362,5 +370,68 @@
       <div class="card rv" style="--i:4"><div class="step">手相 × 四柱</div><h3>사주 × 손금 풀이</h3>${(d.sections || []).map(s => `<div class="sec"><h4>${esc(s.title)}</h4>${(s.palm || []).map(t => `<p><em class="tg">손금</em><span>${esc(t)}</span></p>`).join("")}${(s.saju || []).map(t => `<p><em class="tg">사주</em><span>${esc(t)}</span></p>`).join("")}${(s.timing || []).map(t => `<p><em class="tg">시기</em><span>${esc(t)}</span></p>`).join("")}</div>`).join("")}</div>`;
   }
 
-  window.PalmFlow = { init(el) { root = el; capture(); }, get state() { return S; }, start };
+  /* ---------- 5-1. 사주 × 손금 교차 풀이 (한 장) ---------- */
+  const SEC_OF = { business: "work", fate: "work", life: "health", head: "mind", heart: "heart" };
+  const PAIR_T = { sun: "사주 재성·식상 · 대운", business: "사주 관성·식상 · 대운", fate: "사주 대운 흐름", life: "사주 오행 · 건강", head: "사주 일간 · 인성·식상", heart: "사주 배우자 자리 · 연애" };
+  const tagP = (t, tg) => `<p class="xl"><em class="tg${tg === "사주" ? " sj" : tg === "시기" ? " tm" : ""}">${tg}</em><span>${esc(t)}</span></p>`;
+  function crossResult() {
+    const d = S.reading, sj = d.saju, F = d.free || {}, P = d.pairs || {}, M = window.MW.saju, open = d.unlocked;
+    const sec = key => (d.sections || []).find(x => x.key === key) || (d.sections || [])[["work", "health", "mind", "heart"].indexOf(key)] || {};
+    const lineRead = k => (d.lines || []).find(x => x.name === RULE[k]);
+    const money = d.money || {}, mk = (sj.key3 || []).find(k => /재물|돈/.test(k.title));
+    const [y0, y1] = sj.years;
+    root.innerHTML = `
+      ${M.hero(sj, BADGE)}
+      <div class="money rv" style="--i:1"><div class="wm">財</div><div class="step">財運 · 재운선 × 대박손금 × 사주 재물운</div><h3>사주 × 손금 재물운 ${F.stars ? stars(F.stars) : ""}</h3>
+        <p class="hd">${esc(F.headline || "")}</p>
+        ${(F.badges || []).map(b => `<div class="badge"><b>★ ${esc(b.label)}</b> ${esc(b.desc)}</div>`).join("") || `<p class="mini" style="position:relative;margin:12px 0 0">사진에서 뚜렷한 대박손금 표식은 확인되지 않았어요. 희미한 선은 지어내지 않고 그대로 알려 드려요.</p>`}
+        ${(F.palm || []).map(t => tagP(t, "손금")).join("")}
+        ${mk ? tagP(`${mk.title.replace(/<[^>]+>/g, "")} · ${mk.text.replace(/<[^>]+>/g, "")}`, "사주") : ""}
+        ${(P.sun || []).length ? `<div class="pairs">${P.sun.map(x => `<span>${esc(x)}</span>`).join("")}</div>` : ""}
+        ${open ? `${money.peak ? `<p class="peak">${esc(money.peak)}</p>` : ""}${(money.saju || []).map(t => tagP(t, "사주")).join("")}${money.palm_age ? tagP(money.palm_age, "시기") : ""}${money.advice ? tagP(money.advice, "조언") : ""}`
+          : `<p class="mini lk1">${ic("lock")}<span>돈 들어오는 나이·해(재운선 × 대운·세운)는 감정서에서 열려요</span></p>`}</div>
+      <div class="card rv" style="--i:3"><div class="step">手相 · ${S.hand} · 주로 쓰는 손</div>
+        ${stageHTML("pf-rs")}
+        <div class="legend">${ORDER.map(k => { const L = S.res.lines[k], on = L?.img?.length; return `<span class="${on ? "" : "off"}" style="--c:${COLOR[k]}"><i></i>${NAME[k]}${on ? (L.conf !== "high" || L.estimated ? "·희미" : "") : "·없음"}</span>`; }).join("")}</div>
+        <p class="mini">실선은 뚜렷하게 찾은 주름, 점선은 희미하거나 일부만 보이는 선, ★은 대박손금 표식이에요.</p></div>
+      <div class="card lines xlines rv" style="--i:3"><div class="step">六線 × 四柱 · 6대 선과 사주</div><h3>선 하나하나, 사주와 맞대어 봤어요</h3>
+        ${ORDER.map(k => { const L = S.res.lines[k], r = lineRead(k), on = L?.img?.length, sc = sec(SEC_OF[k]);
+          return `<div class="ln xln" style="--c:${COLOR[k]}"><i></i><b>${G.FULL[k]} <span class="mini">${on ? (L.conf !== "high" || L.estimated ? "희미함" : "뚜렷") : "보이지 않음"}</span><small class="pt">× ${PAIR_T[k]}</small></b>
+            ${tagP(r?.observed || (on ? "" : "사진에서 뚜렷하게 보이지 않았어요."), "손금")}
+            ${(P[k] || []).length ? `<div class="pairs">${P[k].map(x => `<span>${esc(x)}</span>`).join("")}</div>` : ""}
+            ${open ? `${r?.meaning ? `<p class="xm">${esc(r.meaning)}</p>` : ""}${lineSaju(k, sec)}` : ""}</div>`; }).join("")}
+        ${open ? "" : `<p class="mini lk1">${ic("lock")}<span>선마다 사주 풀이·시기는 감정서에서 모두 열려요</span></p>`}</div>
+      ${M.pillarsCard(sj, 4)}
+      ${M.yearCard(y1, true, 5)}
+      ${M.keysHTML(sj.key3, 6)}
+      ${M.fiveCard(sj, 10)}
+      ${adviceHTML(d.advice || [], 11)}
+      ${M.decadeCard(sj, 12)}
+      <div id="pf-lock" class="rv" style="--i:13">${lockHTML(d, "사주 × 손금 교차 감정서")}</div>
+      <div class="row2"><button class="btn btn-line" id="pf-again">${ic("cam")}다시 찍기</button><button class="btn btn-line" id="pf-fix">${ic("pen")}선 다시 확인</button></div>
+      <button class="btn btn-ghost" id="pf-rebirth" style="margin-top:6px">다른 생년월일로 보기</button>
+      <p class="privacy-note">${ic("shield")}<span>사진은 이 폰에서만 썼어요. 서버에는 선 좌표와 특징만 보냈어요. 감정서의 손 그림도 사진 없이 선으로만 그려요.</span></p>
+      <p class="foot">전통 명리·수상학 해석에 기반한 재미·참고용 풀이예요. 건강 풀이는 의학적 진단이 아니에요.</p>`;
+    const svg = paintStage("pf-rs"); svg.innerHTML = linesSVG(null, { labels: true });
+    wireLock(root, d, async () => { S.reading = await api("/api/v2/palm", payload()); result(); });
+    $("#pf-again", root).onclick = () => capture();
+    $("#pf-fix", root).onclick = () => { S.idx = 0; confirmStep(); };
+    $("#pf-rebirth", root).onclick = () => OPT.onEdit ? OPT.onEdit() : capture();
+  }
+  function lineSaju(k, sec) {
+    if (k === "sun") return "";
+    const sc = sec(SEC_OF[k]), L = [];
+    if (k === "business") (sc.saju || []).forEach(t => L.push(tagP(t, "사주")));
+    else if (k === "fate") (sc.timing || []).forEach(t => L.push(tagP(t, "시기")));
+    else { (sc.saju || []).forEach(t => L.push(tagP(t, "사주"))); (sc.timing || []).forEach(t => L.push(tagP(t, "시기"))); if (sc.note) L.push(`<p class="mini">${esc(sc.note)}</p>`); }
+    return L.join("");
+  }
+  function adviceHTML(a, i) {
+    if (!a.length) return "";
+    return `<div class="card advice rv" style="--i:${i}"><div class="step">올해 · 내년 · 사주 × 손금 조언</div><h3>두 풀이가 함께 말하는 올해와 내년</h3>
+      ${a.map(y => `<div class="adv"><div class="ah"><span class="eb">${y.label} · ${y.year} ${esc(y.gz)}</span>${stars(y.star)}</div><b>${esc(y.title)}</b>
+        ${y.saju ? tagP(y.saju, "사주") : ""}${(y.tips || []).map(t => tagP(t, "조언")).join("")}${y.months ? `<p class="mo">${ic("cal")}<span>${esc(y.months)}</span></p>` : ""}</div>`).join("")}</div>`;
+  }
+
+  window.PalmFlow = { init(el, o) { root = el; OPT = o || {}; capture(); }, get state() { return S; }, start };
 })();

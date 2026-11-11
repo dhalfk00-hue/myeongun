@@ -1,7 +1,7 @@
 /* 명운 서비스 워커: 앱 화면·손 인식 모델을 기기에 저장해 빠르게 열고, 오프라인에서도 첫 화면이 뜨게 함.
    개인 정보가 든 API 응답(/api/)과 감정서는 저장하지 않음. */
-const VER = "mw-v5";
-const SHELL = ["/", "/static/m.css?v=4", "/static/m.js?v=3", "/static/palm_detect.js?v=4", "/static/palm_guide.js?v=5", "/static/palm_flow.js?v=5", "/static/fonts/pretendard-400.woff2", "/static/fonts/pretendard-600.woff2", "/static/fonts/notoserifkr-400.woff2", "/static/fonts/notoserifkr-700.woff2",
+const VER = "mw-v6";
+const SHELL = ["/", "/static/m.css?v=4", "/static/m.js?v=3", "/static/palm_detect.js?v=6", "/static/palm_guide.js?v=6", "/static/palm_flow.js?v=6", "/static/img/palm_hand.webp", "/static/fonts/pretendard-400.woff2", "/static/fonts/pretendard-600.woff2", "/static/fonts/notoserifkr-400.woff2", "/static/fonts/notoserifkr-700.woff2",
   "/manifest.webmanifest", "/static/icons/icon-192.png", "/static/icons/icon-512.png", "/privacy"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(VER).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VER).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

@@ -9,90 +9,71 @@
   const MEAN = { sun: "재물 · 돈복", business: "장사 · 사업 감각", fate: "일 · 사회운", life: "건강 · 생활력", head: "생각 · 재능", heart: "감정 · 관계" };
   const FIND = {
     sun: "약지(넷째 손가락) 바로 아래에서 약지 쪽으로 짧게 올라가는 세로선이에요.",
-    business: "손바닥 아래 가운데에서 새끼손가락 아래로 비스듬히 올라가는 선이에요.",
+    business: "손바닥 아래 가운데에서 비스듬히 올라가 약지 아래 언덕(태양구) 위쪽까지 뻗는 선이에요.",
     fate: "손목 한가운데에서 가운뎃손가락 쪽으로 곧게 올라가는 세로선이에요.",
     life: "엄지와 검지 사이에서 시작해 엄지 아래 두툼한 살을 둥글게 감싸는 곡선이에요.",
     head: "생명선과 같은 곳에서 시작해 손바닥 한가운데를 가로지르는 선이에요.",
     heart: "손가락 바로 아래, 새끼손가락 쪽에서 검지 쪽으로 지나가는 맨 위 가로선이에요.",
   };
-  // 오른손 손바닥(엄지 오른쪽), viewBox 0 0 200 260
+  // 오른손 손바닥 그림(엄지 오른쪽) 위 좌표, viewBox 0 0 560 836. 손 그림은 /static/img/palm_hand.webp (금빛 판화풍, 선 없음)
+  const IMG = "/static/img/palm_hand.webp", VW = 560, VH = 836;
   const D = {
-    sun: "M77.5 172 C77.2 160 76.9 149 76.5 136",            // 약지 바로 아래, 약지를 향해 짧게 올라감
-    business: "M108 236 C88 226 66 200 56 160",              // 손바닥 아래 가운데 → 새끼손가락 아래로 비스듬히
-    fate: "M100 248 C101 210 103 168 104 126",
-    life: "M149 140 C124 150 110 190 124 248",
-    head: "M149 143 C122 150 92 164 60 190",
-    heart: "M46 148 C74 146 100 140 125 121",
+    sun: "M183 455 C182.5 420 181.5 385 180 350",              // 약지 아래(가운뎃손가락 쪽으로 살짝), 약지를 향해 짧게
+    business: "M246 612 C205 560 140 470 129 352",             // 손바닥 아래 가운데 → 비스듬히 올라 약지·새끼 사이 아래 태양구 위쪽까지
+    fate: "M214 640 C218 540 225 430 231 330",
+    life: "M352 422 C280 445 250 520 290 640",
+    head: "M356 418 C290 430 190 455 88 500",
+    heart: "M70 412 C130 405 200 392 287 342",
   };
   // 번호(선 위)와 이름표(선 바로 옆) 위치
-  const NUM = { sun: [76.5, 131], business: [61, 180], fate: [103, 186], life: [119, 190], head: [120, 153], heart: [40, 148] };
-  const TAG = { sun: [81, 157, "start"], business: [70, 238, "start"], fate: [98, 205, "end"], life: [126, 222, "start"], head: [128, 140, "middle"], heart: [47, 141, "start"] };
+  const NUM = { sun: [180, 336], business: [146, 440], fate: [223, 505], life: [262, 545], head: [98, 495], heart: [60, 413] };
+  const TAG = { sun: [188, 428, "start"], business: [112, 560, "start"], fate: [206, 622, "end"], life: [300, 566, "start"], head: [304, 410, "middle"], heart: [78, 392, "start"] };
   const FULL = { sun: "재운선(태양선)", business: "사업선", fate: "운명선", life: "생명선", head: "두뇌선", heart: "감정선" };
   const REGIONS = [
-    { id: "pinky", no: "①", t: "약지 · 새끼손가락 아래", lines: ["sun", "heart"], e: [70, 150, 36, 30] },
-    { id: "center", no: "②", t: "손바닥 가운데", lines: ["fate", "business", "head"], e: [96, 188, 40, 42] },
-    { id: "thumb", no: "③", t: "엄지 쪽 두툼한 곳", lines: ["life"], e: [134, 196, 28, 46] },
+    { id: "pinky", no: "①", t: "약지 · 새끼손가락 아래", lines: ["sun", "heart"], e: [150, 410, 95, 80] },
+    { id: "center", no: "②", t: "손바닥 가운데", lines: ["fate", "business", "head"], e: [215, 520, 105, 100] },
+    { id: "thumb", no: "③", t: "엄지 쪽 두툼한 곳", lines: ["life"], e: [322, 545, 72, 105] },
   ];
   const REGION_OF = { sun: "pinky", heart: "pinky", business: "center", fate: "center", head: "center", life: "thumb" };
   let uid = 0;
 
-  function hand(id, o = {}) {
-    const fill = o.fill || `url(#${id}g)`, edge = o.edge || "#9c7f48", sw = o.sw ?? 1.6;
-    const shapes = [
-      `<path d="M58 252 C54 220 47 180 46 146 C45 128 52 116 64 113 L138 113 C150 115 156 126 156 142 C156 160 160 176 158 196 C156 222 148 240 142 252 Z"/>`,
-      `<rect x="40" y="66" width="22" height="62" rx="11" transform="rotate(-9 51 122)"/>`,
-      `<rect x="64" y="32" width="24" height="92" rx="12" transform="rotate(-3 76 122)"/>`,
-      `<rect x="91" y="20" width="25" height="102" rx="12.5"/>`,
-      `<rect x="119" y="36" width="24" height="88" rx="12" transform="rotate(5 131 122)"/>`,
-    ].join("");
-    const thumb = `M150 212 C164 188 176 162 184 132`;
-    return `<g fill="none" stroke="${edge}" stroke-width="${sw * 2}" stroke-linejoin="round">${shapes}<path d="${thumb}" stroke-width="${26 + sw * 2}" stroke-linecap="round"/></g>
-      <g fill="${fill}" stroke="none">${shapes}<path d="${thumb}" stroke="${fill}" stroke-width="26" stroke-linecap="round" fill="none"/></g>
-      ${o.creases === false ? "" : `<g stroke="${edge}" stroke-width=".7" opacity=".45" stroke-linecap="round" fill="none">
-        <path d="M46 92 l12 2M44 106 l13 2"/><path d="M66 58 l18 -1M66 82 l19 -1"/><path d="M94 48 l19 0M94 76 l19 0"/><path d="M122 62 l18 2M121 88 l18 2"/><path d="M172 150 l14 6"/></g>`}`;
-  }
   function defs(id) {
-    return `<defs><linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b2519"/><stop offset=".55" stop-color="#211c14"/><stop offset="1" stop-color="#16130e"/></linearGradient>
-      <radialGradient id="${id}h" cx=".55" cy=".55" r=".5"><stop offset="0" stop-color="#f3e2b6" stop-opacity=".10"/><stop offset="1" stop-color="#f3e2b6" stop-opacity="0"/></radialGradient>
-      <filter id="${id}f" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
+    return `<defs><filter id="${id}f" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <radialGradient id="${id}v" cx=".5" cy=".55" r=".6"><stop offset=".55" stop-color="#0b0d14" stop-opacity="0"/><stop offset="1" stop-color="#0b0d14" stop-opacity=".55"/></radialGradient></defs>`;
   }
-  /* 손금 지도. o.only: 그 선만 강조 / o.region: 가까이 찍기 구역 표시 / o.mirror: 왼손 / o.ghost: 선 없이 손 윤곽만(촬영 틀) / o.nums: 번호 */
+  const handImg = (op = 1, extra = "") => `<image href="${IMG}" x="0" y="0" width="${VW}" height="${VH}" preserveAspectRatio="xMidYMid meet" opacity="${op}"${extra}/>`;
+  /* 손금 지도. o.only: 그 선만 강조 / o.region: 가까이 찍기 구역 표시 / o.mirror: 왼손 / o.ghost: 선 없이 손만(촬영 틀) / o.nums: 번호+이름표 / o.labels: 손가락 이름 */
   function svg(o = {}) {
-    const id = "pg" + (++uid), mir = o.mirror ? ` transform="translate(200 0) scale(-1 1)"` : "", X = x => o.mirror ? 200 - x : x;
+    const id = "pg" + (++uid), mir = o.mirror ? ` transform="translate(${VW} 0) scale(-1 1)"` : "", X = x => o.mirror ? VW - x : x;
+    const RL = o.region && (REGIONS.find(r => r.id === o.region) || {}).lines || null;
     let ln = "";
     if (!o.ghost) ORDER.forEach(k => {
-      const RL = o.region && (REGIONS.find(r => r.id === o.region) || {}).lines || null;
-      const on = RL ? RL.includes(k) : (!o.only || o.only === k), sw = o.only ? (on ? 3.4 : 1.4) : RL ? (on ? 3.6 : 1.6) : 2.6;
-      ln += `<path d="${D[k]}" fill="none" stroke="${COLOR[k]}" stroke-width="${sw}" stroke-linecap="round" opacity="${on ? 1 : 0.16}"${on ? ` filter="url(#${id}f)"` : ""}/>`;
+      const on = RL ? RL.includes(k) : (!o.only || o.only === k), sw = o.only || RL ? (on ? 11 : 4.5) : 7.5;
+      ln += `<path d="${D[k]}" fill="none" stroke="#0b0d14" stroke-opacity="${on ? 0.6 : 0.25}" stroke-width="${sw + 6}" stroke-linecap="round"/>`
+        + `<path d="${D[k]}" fill="none" stroke="${COLOR[k]}" stroke-width="${sw}" stroke-linecap="round" opacity="${on ? 1 : 0.28}"${on ? ` filter="url(#${id}f)"` : ""}/>`;
     });
     let rg = "";
-    if (o.region) { const R = REGIONS.find(r => r.id === o.region); if (R) rg = `<ellipse cx="${R.e[0]}" cy="${R.e[1]}" rx="${R.e[2]}" ry="${R.e[3]}" fill="rgba(243,226,182,.16)" stroke="#f3e2b6" stroke-width="3" stroke-dasharray="7 5"/>`; }
+    if (o.region) { const R = REGIONS.find(r => r.id === o.region); if (R) rg = `<ellipse cx="${R.e[0]}" cy="${R.e[1]}" rx="${R.e[2]}" ry="${R.e[3]}" fill="rgba(11,13,20,.28)" stroke="#f3e2b6" stroke-width="9" stroke-dasharray="20 14"/>`; }
     let nums = "";
     if (o.nums && !o.ghost) ORDER.forEach((k, i) => { const [x, y] = NUM[k], [tx, ty, an] = TAG[k], A = o.mirror ? { start: "end", end: "start", middle: "middle" }[an] : an;
-      nums += `<g><circle cx="${X(x)}" cy="${y}" r="4.8" fill="#0b0d14" stroke="${COLOR[k]}" stroke-width="1.1"/><text x="${X(x)}" y="${y + 2.3}" font-size="6.6" text-anchor="middle" fill="${COLOR[k]}" font-family="var(--serif)" font-weight="700">${i + 1}</text>
-        <text x="${X(tx)}" y="${ty}" font-size="6.6" text-anchor="${A}" fill="${COLOR[k]}" font-family="var(--sans)" font-weight="600" style="paint-order:stroke;stroke:#17140f;stroke-width:2.4px;stroke-linejoin:round">${NAME[k]}</text></g>`; });
-    const lab = o.labels ? `<g font-size="8" fill="#9a9384" font-family="var(--sans)" letter-spacing=".08em"><text x="${X(o.mirror ? 186 : 14)}" y="20" text-anchor="${o.mirror ? "end" : "start"}">${o.mirror ? "왼손" : "오른손"} 손바닥</text>
-      <text x="${X(184)}" y="112" text-anchor="middle">엄지</text><text x="${X(51)}" y="58" text-anchor="middle">새끼</text><text x="${X(76)}" y="25" text-anchor="middle">약지</text><text x="${X(103.5)}" y="13" text-anchor="middle">중지</text><text x="${X(131)}" y="29" text-anchor="middle">검지</text><text x="${X(100)}" y="259" text-anchor="middle">손목</text></g>` : "";
-    return `<svg class="pg${o.cls ? " " + o.cls : ""}" viewBox="0 0 200 262" role="img" aria-label="손금 위치 그림">${defs(id)}<g${mir}>${o.ghost ? hand(id, { fill: "#11131b", edge: "rgba(214,185,124,.6)", sw: .6, creases: false }) : hand(id)}<ellipse cx="100" cy="180" rx="60" ry="70" fill="url(#${id}h)"/>${rg}${ln}</g>${nums}${lab}</svg>`;
+      nums += `<g><circle cx="${X(x)}" cy="${y}" r="13" fill="#0b0d14" stroke="${COLOR[k]}" stroke-width="2.6"/><text x="${X(x)}" y="${y + 6}" font-size="17" text-anchor="middle" fill="${COLOR[k]}" font-family="var(--serif)" font-weight="700">${i + 1}</text>
+        <text x="${X(tx)}" y="${ty}" font-size="17" text-anchor="${A}" fill="${COLOR[k]}" font-family="var(--sans)" font-weight="700" style="paint-order:stroke;stroke:#0b0d14;stroke-width:6px;stroke-linejoin:round">${NAME[k]}</text></g>`; });
+    const lab = o.labels ? `<g font-size="16" fill="#9a9384" font-family="var(--sans)" letter-spacing=".06em" text-anchor="middle"><text x="${X(o.mirror ? 520 : 40)}" y="40" text-anchor="${o.mirror ? "end" : "start"}">${o.mirror ? "왼손" : "오른손"} 손바닥</text>
+      <text x="${X(86)}" y="150">새끼</text><text x="${X(160)}" y="58">약지</text><text x="${X(226)}" y="20">중지</text><text x="${X(316)}" y="60">검지</text><text x="${X(512)}" y="290">엄지</text><text x="${X(226)}" y="812">손목</text></g>` : "";
+    return `<svg class="pg${o.cls ? " " + o.cls : ""}" viewBox="0 0 ${VW} ${VH}" role="img" aria-label="손금 위치 그림">${defs(id)}<g${mir}>${handImg(o.ghost ? 0.3 : 0.92)}${rg}${ln}</g>${nums}${lab}</svg>`;
   }
 
-  /* 잘 찍은 사진 / 아쉬운 사진 예시 그림 */
+  /* 잘 찍은 사진 / 아쉬운 사진 예시 그림 (같은 손 그림에 밝기·크기·흔들림만 바꿈) */
   function example(kind) {
-    const id = "pe" + (++uid);
-    const bg = { good: "#3b3427", dark: "#0c0b09", far: "#3b3427", blur: "#3b3427", bent: "#3b3427" }[kind];
-    const ok = kind === "good";
-    const tf = { good: "translate(10 4) scale(.9)", dark: "translate(10 4) scale(.9)", far: "translate(62 66) scale(.38)", blur: "translate(10 4) scale(.9)", bent: "translate(10 4) scale(.9)" }[kind];
-    const skin = kind === "dark" ? "#1d1912" : "#c9a87e", edge = kind === "dark" ? "#2a241a" : "#8a6b45";
-    const blur = kind === "blur" ? `<filter id="${id}b"><feGaussianBlur stdDeviation="4"/></filter>` : "";
-    const mark = ok ? `<circle cx="178" cy="22" r="14" fill="#8fc6a2"/><path d="M171 22 l5 5 l9 -10" stroke="#0b0d14" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`
-      : `<circle cx="178" cy="22" r="14" fill="#e7928a"/><path d="M172 16 l12 12 M184 16 l-12 12" stroke="#0b0d14" stroke-width="3" stroke-linecap="round"/>`;
-    const bent = kind === "bent" ? `<g transform="rotate(-14 100 140)"></g>` : "";
-    let h = hand(id, { fill: skin, edge, sw: .8, creases: false });
-    if (kind === "bent") h = `<g transform="translate(0 30) scale(1 .78) skewX(-10)">${h}</g>`;
-    const lines = kind === "dark" ? "" : `<g stroke="#6b4f2e" stroke-width="2" fill="none" stroke-linecap="round" opacity=".85"><path d="${D.life}"/><path d="${D.head}"/><path d="${D.heart}"/><path d="${D.fate}" stroke-width="1.3"/></g>`;
-    const sun = kind === "good" || kind === "blur" || kind === "bent" ? `<circle cx="40" cy="40" r="26" fill="#fff6d8" opacity=".10"/>` : "";
-    return `<svg viewBox="0 0 200 262" aria-hidden="true"><defs>${blur}</defs><rect width="200" height="262" rx="16" fill="${bg}"/>${sun}
-      <g transform="${tf}"${kind === "blur" ? ` filter="url(#${id}b)"` : ""}>${h}${lines}</g>${bent}${mark}</svg>`;
+    const id = "pe" + (++uid), ok = kind === "good";
+    const bg = kind === "dark" ? "#07080b" : "#2a2a30";
+    const tf = kind === "far" ? `translate(${VW * 0.31} ${VH * 0.31}) scale(.38)` : `translate(${VW * 0.05} ${VH * 0.05}) scale(.9)`;
+    const f = kind === "blur" ? `<filter id="${id}b"><feGaussianBlur stdDeviation="9"/></filter>` : kind === "dark" ? `<filter id="${id}b"><feColorMatrix type="matrix" values=".16 0 0 0 0 0 .16 0 0 0 0 0 .16 0 0 0 0 0 1 0"/></filter>` : "";
+    const mark = ok ? `<circle cx="490" cy="66" r="40" fill="#8fc6a2"/><path d="M470 66 l14 14 l26 -28" stroke="#0b0d14" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`
+      : `<circle cx="490" cy="66" r="40" fill="#e7928a"/><path d="M474 50 l32 32 M506 50 l-32 32" stroke="#0b0d14" stroke-width="9" stroke-linecap="round"/>`;
+    const glow = kind === "dark" ? "" : `<radialGradient id="${id}g" cx=".3" cy=".2" r=".8"><stop offset="0" stop-color="#fff6d8" stop-opacity=".16"/><stop offset="1" stop-color="#fff6d8" stop-opacity="0"/></radialGradient>`;
+    return `<svg viewBox="0 0 ${VW} ${VH}" aria-hidden="true"><defs>${f}${glow}</defs><rect width="${VW}" height="${VH}" rx="40" fill="${bg}"/>${glow ? `<rect width="${VW}" height="${VH}" rx="40" fill="url(#${id}g)"/>` : ""}
+      <g transform="${tf}"${f ? ` filter="url(#${id}b)"` : ""}>${handImg(1)}</g>${mark}</svg>`;
   }
   const EXAMPLES = [["good", "밝은 곳 · 손바닥이 화면 가득"], ["dark", "어두우면 주름이 안 보여요"], ["far", "너무 멀면 선이 뭉개져요"], ["blur", "흔들리면 선이 번져요"]];
   const exampleHTML = () => `<div class="pex">${EXAMPLES.map(([k, t]) => `<figure class="${k === "good" ? "ok" : "no"}">${example(k)}<figcaption>${t}</figcaption></figure>`).join("")}</div>`;

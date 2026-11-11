@@ -1,0 +1,82 @@
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; }
+html,body { margin:0; padding:0; }
+body { font-family: "Noto Sans CJK KR","Noto Sans KR",sans-serif; color:#2b241c; font-size:11.4pt; line-height:1.72; -webkit-print-color-adjust:exact; print-color-adjust:exact; word-break:keep-all; }
+.page { width:210mm; height:297mm; padding:17mm 16mm 16mm; position:relative; overflow:hidden; page-break-after:always; background:#fbf7ee; }
+.page:last-child { page-break-after:auto; }
+.page::before { content:""; position:absolute; inset:7mm; border:0.6pt solid #c9a75e; pointer-events:none; }
+.page::after { content:""; position:absolute; inset:8.2mm; border:0.3pt solid #e3cf9e; pointer-events:none; }
+.foot { position:absolute; bottom:10.5mm; left:0; right:0; text-align:center; font-size:8pt; color:#a58a55; letter-spacing:0.25em; }
+.serif, h1, h2, h3 { font-family:"Noto Serif CJK KR",serif; }
+h2 { font-size:19pt; margin:0 0 2mm; color:#2a2016; font-weight:700; letter-spacing:0.02em; }
+h2 .no { color:#b08a3e; font-size:12pt; margin-right:3mm; letter-spacing:0.15em; }
+.sub { color:#8a744b; font-size:9.6pt; margin:0 0 5mm; letter-spacing:0.05em; }
+h3 { font-size:13pt; margin:5mm 0 1.8mm; color:#6b4f1d; display:flex; align-items:center; gap:2mm; }
+h3::before { content:"◆"; color:#c39a45; font-size:8pt; }
+p { margin:0 0 2.4mm; }
+.rule { height:0.5pt; background:linear-gradient(90deg,transparent,#c9a75e,transparent); margin:4mm 0; }
+.gold { color:#9b7425; font-weight:700; }
+.em { background:linear-gradient(transparent 60%, #f1dfae 60%); font-weight:700; }
+.box { background:#fffdf8; border:0.6pt solid #e2cf9f; border-radius:3mm; padding:3.6mm 4.4mm; margin:2.6mm 0; }
+.box.dark { background:#231c14; color:#efe3c6; border-color:#5c4a2a; }
+.box.dark .gold { color:#e6c477; }
+.tag { display:inline-block; font-size:8.6pt; padding:0.3mm 2.2mm; border-radius:3mm; border:0.5pt solid #c9a75e; color:#8a6a2a; margin-right:1.2mm; background:#fff8e6; }
+table { width:100%; border-collapse:collapse; font-size:9.8pt; line-height:1.5; }
+th { background:#2a2118; color:#ecd9a8; font-weight:500; padding:1.6mm 1.4mm; border:0.4pt solid #5b4a2c; font-size:9.2pt; }
+td { padding:1.5mm 1.6mm; border:0.4pt solid #e0cfa6; vertical-align:top; background:#fffdf8; }
+tr.hl td { background:#fbefd2; }
+.stars { color:#b8892f; letter-spacing:0.05em; white-space:nowrap; }
+.two { display:grid; grid-template-columns:1fr 1fr; gap:4mm; }
+.small { font-size:9.3pt; color:#5a4c38; line-height:1.6; }
+.tiny { font-size:8.4pt; color:#8a7a60; line-height:1.5; }
+ul { margin:0 0 2mm; padding-left:5mm; } li { margin-bottom:1.1mm; }
+/* cover */
+.cover { background:radial-gradient(ellipse at 50% 30%, #3a2d1c 0%, #1a140e 62%, #120e0a 100%); color:#efe1bf; }
+.cover::before { border-color:#8f7238; } .cover::after { border-color:#5d4a26; }
+.brand { text-align:center; margin-top:6mm; }
+.seal { width:21mm; height:21mm; margin:0 auto 4mm; border-radius:4mm; background:linear-gradient(145deg,#b8322a,#7f1d17); display:flex; align-items:center; justify-content:center; color:#f6e3b4; font-family:"Noto Serif CJK KR",serif; font-size:16pt; font-weight:700; box-shadow:0 0 0 0.8pt #d9b76a; }
+.brand .name { font-family:"Noto Serif CJK KR",serif; font-size:34pt; letter-spacing:0.5em; color:#e9c97c; margin-left:0.5em; }
+.brand .en { font-size:8.5pt; letter-spacing:0.6em; color:#a88d55; margin-top:1mm; }
+.ctitle { text-align:center; margin-top:9mm; font-family:"Noto Serif CJK KR",serif; font-size:17pt; color:#f3e6c6; letter-spacing:0.08em; }
+.cmeta { text-align:center; margin-top:2.5mm; font-size:9.6pt; color:#bda676; letter-spacing:0.05em; }
+.pillars { display:flex; justify-content:center; gap:4mm; margin:7mm 0 6mm; }
+.pl { width:26mm; text-align:center; }
+.pl .lb { font-size:8.4pt; color:#a8915e; letter-spacing:0.2em; margin-bottom:1.4mm; }
+.pl .ch { font-family:"Noto Serif CJK KR",serif; font-size:23pt; line-height:1.25; border:0.6pt solid #6e5a33; border-radius:2.4mm; padding:1.8mm 0; background:rgba(0,0,0,0.25); }
+.pl .ch span { display:block; }
+.pl .tg { font-size:8.4pt; color:#cdb27a; margin-top:1.2mm; }
+.pl.me .ch { border-color:#e3c070; box-shadow:0 0 6pt rgba(227,192,112,0.35); }
+.key5 { margin-top:4mm; }
+.key5 .k { display:flex; gap:3.4mm; padding:2.6mm 0; border-bottom:0.4pt solid rgba(201,167,94,0.28); }
+.key5 .k:last-child { border-bottom:none; }
+.key5 .n { flex:0 0 8mm; height:8mm; border-radius:50%; border:0.7pt solid #d4b46b; color:#e9c97c; display:flex; align-items:center; justify-content:center; font-family:"Noto Serif CJK KR",serif; font-size:11pt; margin-top:0.6mm; }
+.key5 .t { font-size:10.6pt; line-height:1.62; color:#eadcb9; }
+.key5 .t b { color:#f0cd7d; font-weight:700; display:block; font-size:11.4pt; margin-bottom:0.4mm; font-family:"Noto Serif CJK KR",serif; }
+.cover .foot { color:#8f7a4d; }
+/* chart */
+.mchart td, .mchart th { text-align:center; }
+.mchart .big { font-family:"Noto Serif CJK KR",serif; font-size:20pt; line-height:1.15; padding:2mm 0 1mm; }
+.el-목 { color:#2f7a4c; } .el-화 { color:#c0392b; } .el-토 { color:#a0762a; } .el-금 { color:#7d8590; } .el-수 { color:#1f4e8c; }
+.bars .row { display:flex; align-items:center; gap:2.5mm; margin:1.3mm 0; font-size:10pt; }
+.bars .lab { width:16mm; font-weight:700; }
+.bars .track { flex:1; height:4.2mm; background:#f1e7d0; border-radius:2mm; overflow:hidden; }
+.bars .fill { height:100%; border-radius:2mm; }
+.bars .v { width:30mm; font-size:9pt; color:#6d5d45; }
+.palmimg { width:100%; border-radius:3mm; border:0.8pt solid #c9a75e; display:block; }
+.lineitem { border-left:2.2pt solid #c9a75e; padding:0.6mm 0 0.6mm 3.4mm; margin:0 0 3.2mm; }
+.lineitem .hd { font-family:"Noto Serif CJK KR",serif; font-weight:700; font-size:12pt; color:#3a2b14; }
+.lineitem .hd .tag { font-family:"Noto Sans CJK KR",sans-serif; font-weight:400; }
+.lineitem .obs { font-size:9.4pt; color:#7a6545; margin:0.6mm 0 1mm; }
+.lineitem p { font-size:10.4pt; line-height:1.62; margin-bottom:1mm; }
+.cross { font-size:9.8pt; color:#4a3a20; background:#f7ecd2; border-radius:2mm; padding:1.4mm 2.6mm; }
+.cover .brand { margin-top:0; } .cover .seal { width:15mm; height:15mm; font-size:13pt; margin-bottom:2.5mm; }
+.cover .brand .name { font-size:27pt; } .cover .ctitle { margin-top:5mm; font-size:16pt; }
+.cover .pillars { margin:4.5mm 0 4mm; } .cover .pl .ch { font-size:19pt; padding:1.2mm 0; }
+.cover .key5 { margin-top:2mm; } .cover .key5 .k { padding:1.9mm 0; } .cover .key5 .t { font-size:10pt; line-height:1.55; } .cover .key5 .t b { font-size:11pt; }
+.tight { font-size:10.6pt; line-height:1.62; } .tight h3 { margin:3.6mm 0 1.4mm; } .tight .box { margin:2mm 0; padding:3mm 4mm; }
+.cover .brand { margin-top:4mm; } .cover .key5 .k { padding:2.5mm 0; } .cover .key5 .t { font-size:10.5pt; line-height:1.62; } .cover .pillars { margin:6mm 0 5mm; } .cover .pl .ch { font-size:21pt; }
+.cover .el-수 { color:#8fb6ee; } .cover .el-목 { color:#86d0a2; } .cover .el-토 { color:#e0b260; }
+.cover .el-화 { color:#f2907e; } .cover .el-금 { color:#c9ced6; }
+.page > .in { width:100%; }
+.mchart { table-layout:fixed; }
+.key5 .t strong { color:#f0cd7d; }

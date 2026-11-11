@@ -1,0 +1,4 @@
+MediaPipe Tasks Vision 1.2.2 (@mediapipe/tasks-vision, Apache License 2.0, see LICENSE)
+hand_landmarker.task: MediaPipe Hand Landmarker model (float16/1), Apache 2.0.
+Modification: vision_bundle.mjs usage-telemetry flush (POST to odml.pa.googleapis.com/v1/log)
+is disabled so the app makes no third-party network calls. Original: @mediapipe/tasks-vision vision_bundle.mjs (npm).

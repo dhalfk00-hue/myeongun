@@ -1,0 +1,4 @@
+These fonts are subsets (Korean KS X 1001 Hangul + used Hanja) bundled under the SIL Open Font License 1.1 (https://openfontlicense.org).
+- Pretendard (c) Kil Hyung-jin — https://github.com/orioncactus/pretendard  (pretendard-400/600.woff2)
+- Noto Serif CJK KR (c) Google / Adobe — https://github.com/notofonts/noto-cjk  (notoserifkr-400/700.woff2)
+Reserved Font Names are not used for the subsets' family names in CSS ("MW Sans", "MW Serif").

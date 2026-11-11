@@ -1,4 +1,4 @@
-/* 명운 앱 화면 (사주 × 손금 교차 풀이 · 궁합). 외부 API·추적 없음. */
+/* 손명리 앱 화면 (사주 × 손금 교차 풀이 · 궁합). 외부 API·추적 없음. */
 (function () {
   "use strict";
   const $ = (s, el = document) => el.querySelector(s), $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -151,7 +151,7 @@
     <circle cx="75" cy="75" r="40" fill="rgba(214,185,124,.06)" stroke="rgba(214,185,124,.3)" stroke-width=".6"/></svg>`; })();
   const loadingHTML = (t, s = "", ch = "命") => `<div class="loading"><div class="orb">${ORB}<b class="gt">${ch}</b></div><div class="t" data-lt>${t}</div><div class="s">${s}</div></div>`;
   async function withLoading(el, steps, p, ch, min = 1300) {
-    el.innerHTML = loadingHTML(steps[0], "명운 · 만세력", ch); window.scrollTo({ top: 0 });
+    el.innerHTML = loadingHTML(steps[0], "손명리 · 만세력", ch); window.scrollTo({ top: 0 });
     let i = 0; const tm = setInterval(() => { const t = $("[data-lt]", el); if (t && i < steps.length - 1) t.textContent = steps[++i]; }, Math.max(450, min / steps.length));
     try { const [r] = await Promise.all([p, sleep(min)]); return r; } finally { clearInterval(tm); }
   }

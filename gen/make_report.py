@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""명운 사주(+손금) 감정서 고속 생성기 — LLM 호출 없음, 전부 로컬.
+"""손명리 사주(+손금) 감정서 고속 생성기 — LLM 호출 없음, 전부 로컬.
 
 예) python3 make_report.py --gender F --date 1992-03-14 --time 09:30 --place 서울 --out /tmp/report.pdf
     python3 make_report.py --name 홍길동 --gender M --date 1990-05-03 --time 14:20 --place 서울 \
@@ -76,7 +76,7 @@ def assemble(args, now):
     html = re.sub("__PG__", pg, html)
     for bad in ("\ubc31\uc6b4", "\ub3c4\uc0ac", "\ucca0\ud559\uc6d0", "\ube14\ub85c\uadf8"):
         assert bad not in html, f"금지어 포함: {bad}"
-    doc = f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>명운 감정서</title><link rel="stylesheet" href="style.css"></head><body>\n{html}\n</body></html>'
+    doc = f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>손명리 감정서</title><link rel="stylesheet" href="style.css"></head><body>\n{html}\n</body></html>'
     return doc, assets, rep, c
 
 
@@ -107,7 +107,7 @@ async def render(src, out, fit=True):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="명운 사주(+손금) 감정서 생성기")
+    ap = argparse.ArgumentParser(description="손명리 사주(+손금) 감정서 생성기")
     ap.add_argument("--name"); ap.add_argument("--gender", required=True, choices=["F", "M", "f", "m", "여", "남"])
     ap.add_argument("--date", required=True, help="YYYY-MM-DD (기본 양력, --lunar 면 음력)")
     ap.add_argument("--lunar", action="store_true"); ap.add_argument("--leap", action="store_true", help="음력 윤달")

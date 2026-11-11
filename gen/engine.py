@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""명운 감정서 분석 엔진: saju.py 결과 → 용신·격국·점수·월운·인연 시기 (규칙 기반, LLM 없음)."""
+"""손명리 감정서 분석 엔진: saju.py 결과 → 용신·격국·점수·월운·인연 시기 (규칙 기반, LLM 없음)."""
 import sys, argparse
 from datetime import datetime, timedelta, date
 import os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

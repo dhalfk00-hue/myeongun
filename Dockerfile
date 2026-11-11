@@ -1,4 +1,4 @@
-# 명운 (Render 무료 웹 서비스, Docker). Render가 $PORT 를 정해 줌(기본 10000)
+# 손명리 (Render 무료 웹 서비스, Docker). Render가 $PORT 를 정해 줌(기본 10000)
 FROM python:3.12-slim-bookworm
 
 ENV PYTHONUNBUFFERED=1 \

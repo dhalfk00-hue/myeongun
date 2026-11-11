@@ -205,15 +205,15 @@ class Report:
             pillars += f'<div class="pl{" me" if n == "일" else ""}"><div class="lb">{lb}</div><div class="ch">{elsp(gz[0])}{elsp(gz[1])}</div><div class="tg">{tg}</div></div>'
         k = self.key5(palm)
         ks = "".join(f'<div class="k"><div class="n">{i+1}</div><div class="t"><b>{t}</b>{d.replace("<b>", "<strong>").replace("</b>", "</strong>")}</div></div>' for i, (t, d) in enumerate(k))
-        title = "사주 · 손금 종합 감정서" if palm else "사주 종합 감정서"
+        title = "사주 × 손금 교차 감정서" if palm else "사주 종합 감정서"
         return f'''<section class="page cover"><div class="in">
- <div class="brand"><div class="seal">命</div><div class="name">명운</div><div class="en">MYEONGUN · SAJU{' &amp; PALM' if palm else ''}</div></div>
+ <div class="brand"><div class="seal">命</div><div class="name">손명리</div><div class="en">SONMYEONGRI · SAJU{' &amp; PALM' if palm else ''}</div></div>
  <div class="ctitle">{title}</div>
  <div class="cmeta">{esc(self.who)} · {gtxt} · {esc(bdate)} · {esc(inp.get("place_label", ""))} 출생</div>
  <div class="pillars">{pillars}</div>
  <div class="serif" style="text-align:center;color:#e9c97c;font-size:12.5pt;letter-spacing:0.18em;margin-bottom:1mm">한눈에 보는 핵심 5가지</div>
  <div class="key5">{ks}</div>
-</div><div class="foot">MYEONGUN · __PG__</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
 
     def key5(self, palm):
         c = self.c; out = []
@@ -341,7 +341,7 @@ class Report:
  </div>
  <h3>신강·신약 판단</h3><p>{s1}</p>
  <div class="box small"><b class="gold">출생 정보 검증</b> · {self.verify_text()}</div>
-</div><div class="foot">MYEONGUN · __PG__</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
 
     def verify_text(self):
         c = self.c; r = c.r; inp = self.inp; out = []
@@ -422,7 +422,7 @@ class Report:
  <h3>신살(神殺): 양념처럼 읽는 특별한 표식</h3>
  <table><tr><th style="width:21%">신살</th><th style="width:17%">자리</th><th>의미 (전통 해석)</th></tr>{rows}</table>
  <h3>합·충·형 · 공망</h3><ul class="small">{lis}</ul>
-</div><div class="foot">MYEONGUN · __PG__</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
 
     def chart_rel_items(self):
         c = self.c; out = []; seen = set()
@@ -495,7 +495,7 @@ class Report:
  <h2><span class="no">{self.nxt()}</span>재물운</h2>
  <div class="sub">재성의 자리 · 재물 창고 · 식신생재 · 강약과 재물 · 돈 버는 방식</div>
  {m}
-</div><div class="foot">MYEONGUN · __PG__</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
 
     def money_paras(self):
         c = self.c; G = c.gel; n = c.gcount["재성"]; out = []
@@ -603,7 +603,7 @@ class Report:
  <div class="sub">전통 오행 배속에 따른 ‘관리 포인트’이며 의학적 진단이 아니에요</div>
  <ul class="small">{"".join(hl)}</ul>
  <p class="small">__PALM_HEALTH__{hn}</p>
-</div><div class="foot">MYEONGUN · __PG__</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
 
     # ------------------------------------------------------------ P6 대운
     def p_daeun(self):
@@ -645,7 +645,7 @@ class Report:
  <div class="sub">10년마다 바뀌는 인생의 계절 · {di['direction']} · 대운수 {di['대운수']} · 나이는 만 나이 · 대운은 그해 {ps[0]['month']}월 무렵 바뀌어요</div>
  <table><tr><th style="width:11%">나이</th><th style="width:15%">연도</th><th style="width:10%">대운</th><th style="width:16%">십신</th><th>흐름</th><th style="width:12%">운세</th></tr>{rows}</table>
  {paras}
-</div><div class="foot">MYEONGUN · __PG__</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
 
     # ------------------------------------------------------------ P7 올해
     def month_rows(self, ms, hl_cut=4, year_label=False):
@@ -683,7 +683,7 @@ class Report:
  <h3>{mtitle}</h3>
  <table><tr><th style="width:{'22' if cur else '14'}%">{'기간' if cur else '양력'}</th><th style="width:10%">월건</th><th style="width:14%">십신</th><th>포인트</th><th style="width:11%">운세</th></tr>{rows}</table>
  {extra}
-</div><div class="foot">MYEONGUN · __PG__</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
 
     def preview_box(self, y):
         rows = ""
@@ -743,7 +743,7 @@ class Report:
   <div class="box" style="margin:0"><h3 style="margin-top:0">재물·투자운</h3><ul class="small" style="margin:0">{money}</ul></div>
   <div class="box" style="margin:0"><h3 style="margin-top:0">인생 흐름</h3><ul class="small" style="margin:0">{phase}</ul></div>
  </div>
-</div><div class="foot">MYEONGUN · __PG__</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
 
     # ------------------------------------------------------------ 개운법·한계
     def p_end(self, palm=False):
@@ -786,7 +786,7 @@ class Report:
  <div class="rule"></div>
  <div class="tiny"><b>판독 참고와 한계</b> · __PALM_LIMIT__{" ".join(lim)}<br><br>
  <b>안내</b> · 이 감정서는 {basis}에 따른 해석이에요. 과학적으로 검증된 예측이 아니며 오락과 자기 이해를 위한 참고 자료예요. 건강·투자·법률 등 중요한 결정은 반드시 전문가와 상의하세요.</div>
-</div><div class="foot">MYEONGUN · __PG__ · 명운 {'사주·손금' if palm else '사주'} 종합 감정서</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__ · 손명리 {'사주 × 손금 교차' if palm else '사주 종합'} 감정서</div></section>'''
 
     def tips_short(self):
         cur_ms = [m for m in self.mp if m[1] > self.now and m[0].year <= self.Y + 1 and (m[0].year == self.Y or m[3] == "小寒")]
@@ -838,4 +838,4 @@ class Report:
  <h3>{esc(self.who)} 인생의 재물 지도</h3>
  <table><tr><th style="width:20%">시기</th><th style="width:16%">나이</th><th>흐름</th></tr>{mrows}</table>
  <div class="box dark" style="margin-top:3mm"><span class="gold">한 문장 결론</span> · {concl}</div>
-</div><div class="foot">MYEONGUN · __PG__</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__</div></section>'''

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""명운 웹앱 백엔드 (FastAPI). 화면은 /static, API는 /api/v2 (report_api). 사진 업로드 API 없음."""
+"""손명리 웹앱 백엔드 (FastAPI). 화면은 /static, API는 /api/v2 (report_api). 사진 업로드 API 없음."""
 import mimetypes
 from pathlib import Path
 
@@ -14,7 +14,7 @@ from . import report_api
 DISCLAIMER = "전통 명리·수상·관상 해석에 기반한 오락·자기이해용 콘텐츠예요. 미래를 예측하지 않으며, 건강·투자·법률 등 중요한 결정은 전문가와 상의하세요."
 STATIC = Path(__file__).resolve().parent.parent / "static"
 
-app = FastAPI(title="명운", version="0.2.0", docs_url=None, redoc_url=None)
+app = FastAPI(title="손명리", version="0.2.0", docs_url=None, redoc_url=None)
 app.include_router(report_api.router)
 
 

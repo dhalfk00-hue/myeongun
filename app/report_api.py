@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""명운 앱 API v2: 감정서 생성기(make_report / make_gunghap)를 앱에 연결.
+"""손명리 앱 API v2: 감정서 생성기(make_report / make_gunghap)를 앱에 연결.
 - 무료 요약(핵심 3가지 + 올해·내년 별점) + 잠긴 전체 감정서(HTML 보기 · PDF)
 - 결제는 자리만 잡아 둠(Google Play 결제 연동 전). 개발용 잠금 해제: MYEONGUN_DEV_UNLOCK=1 + 토큰 "DEV-UNLOCK"
 - 손금: 사진은 받지 않음. 기기에서 찾은 선 좌표·손 관절 좌표·특징만 받음.
@@ -551,7 +551,7 @@ async def report_pdf(rid: str, u: str = Query("")):
                 await MR.render(str(d / "report.html"), str(tmp))
                 tmp.replace(pdf)
     kind = json.loads((d / "meta.json").read_text())["kind"]
-    fname = {"saju": "myeongun_saju.pdf", "gunghap": "myeongun_gunghap.pdf", "palm": "myeongun_saju_palm.pdf"}[kind]
+    fname = {"saju": "sonmyeongri_saju.pdf", "gunghap": "sonmyeongri_gunghap.pdf", "palm": "sonmyeongri_saju_palm.pdf"}[kind]
     return FileResponse(pdf, media_type="application/pdf", filename=fname, headers={"Cache-Control": "no-store"})
 
 

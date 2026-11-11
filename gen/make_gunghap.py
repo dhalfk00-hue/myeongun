@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""명운 결혼 궁합 감정서 생성기 (규칙 기반, LLM 없음).
+"""손명리 결혼 궁합 감정서 생성기 (규칙 기반, LLM 없음).
 예) python3 make_gunghap.py --f-date 1992-03-14 --f-time 09:30 --f-place 서울 \
       --m-name 홍길동 --m-date 1990-07-02 --m-time 18:00 --m-place 부산 --out /tmp/gunghap.pdf"""
 import argparse, asyncio, json, os, re, shutil, subprocess, sys, time
@@ -205,7 +205,7 @@ class Gunghap:
         keys = self.key5()
         ks = "".join(f'<div class="k"><div class="n">{i+1}</div><div class="t"><b>{t}</b>{d.replace("<b>", "<strong>").replace("</b>", "</strong>")}</div></div>' for i, (t, d) in enumerate(keys))
         return f'''<section class="page cover"><div class="in">
- <div class="brand"><div class="seal">合</div><div class="name">명운</div><div class="en">MYEONGUN · MARRIAGE COMPATIBILITY</div></div>
+ <div class="brand"><div class="seal">合</div><div class="name">손명리</div><div class="en">SONMYEONGRI · MARRIAGE COMPATIBILITY</div></div>
  <div class="ctitle">결혼 궁합 감정서</div>
  <div class="cmeta">{esc(F.who)}(여) {esc(F.dlabel())} {esc(F.place_label)} &nbsp;×&nbsp; {esc(M.who)}(남) {esc(M.dlabel())} {esc(M.place_label)}</div>
  <div style="display:flex;justify-content:center;gap:7mm;align-items:center;margin:4mm 0 2mm">
@@ -215,7 +215,7 @@ class Gunghap:
  </div>
  <div class="serif" style="text-align:center;color:#f0cd7d;font-size:13pt;margin-bottom:2mm">{self.grade()}</div>
  <div class="key5">{ks}</div>
-</div><div class="foot">MYEONGUN · __PG__</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
 
     def key5(self):
         F, M = self.F, self.M; Fc, Mc = F.c, M.c
@@ -298,7 +298,7 @@ class Gunghap:
  <div class="box small"><b class="gold">출생 시각 검증</b> · {self.time_note}</div>
  <h3>오행 비교 · 서로를 채워 주나</h3>
  {self.elem_compare()}
-</div><div class="foot">MYEONGUN · __PG__</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
 
     def elem_compare(self):
         Fc, Mc = self.F.c, self.M.c
@@ -335,7 +335,7 @@ class Gunghap:
  <p class="tiny" style="margin-top:1.4mm">채점 방법: 일간(천간합 15·상생 12·정관 13·비겁 11·충 6) · 용신 보완(상대 글자가 내 용신·기신에 주는 평균 호감도를 사람마다 10점으로 환산) · 배우자궁(기본 12, 육합 +8, 반합 +5, 충 −7, 형 −4, 원진 −3, 귀문 −2, 해 −2, 파 −1, 일지가 상대의 정재·정관이면 +2) · 천간 교차(기본 5, 합 +2.5, 충 −1.5, 한 기둥끼리 천간·지지가 모두 합하는 천지합 +2) · 지지 교차(같은 글자 쌍은 한 번만, 기본 5, 합 +1.5, 반합 +1, 가합 +0.5, 충 −1.5(충·형 겹치면 충만), 형 −1, 원진 −0.5) · 띠(기본 3, 합 +2, 충 −2, 형·원진 −1) · 배우자 별(상대 사주 속 내 배우자 오행의 양) · 시기(향후 10년 중 둘 다 인연운이 강한 해·좋은 해).</p>
  <h3>일간 관계 · {Fc.dm}{EL_HAN[Fc.dm_el]} × {Mc.dm}{EL_HAN[Mc.dm_el]}</h3>
  {ilgan}
-</div><div class="foot">MYEONGUN · __PG__</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
 
     def ilgan_text(self):
         F, M = self.F, self.M; a, b = F.c.dm, M.c.dm
@@ -390,7 +390,7 @@ class Gunghap:
  <h3>{esc(F.who)}의 관성(남편 별) × {esc(M.who)}의 재성(아내 별)</h3>
  <p>{rel_txt}</p>
  <div class="box dark"><span class="gold">정리</span> · {self.attraction_text()} {self.palace_short().split('. ')[0]}.</div>
-</div><div class="foot">MYEONGUN · __PG__</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
 
     def stem_text(self):
         s = []
@@ -468,7 +468,7 @@ class Gunghap:
  <p>{money}</p>
  <p class="small"><b>자녀운</b> · {kid}</p>
  <div class="box dark" style="margin-top:3mm"><span class="gold">두 사람이 잘 맞는 점</span><ul class="small" style="margin:1mm 0 0;color:#efe3c6">{"".join(f"<li>{x}</li>" for x in self.strengths(manager, earner))}</ul></div>
-</div><div class="foot">MYEONGUN · __PG__</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
 
     def strengths(self, manager, earner):
         Fc, Mc = self.F.c, self.M.c; out = []
@@ -504,7 +504,7 @@ class Gunghap:
  <h3>해마다 인연운 교차 (향후 10년)</h3>
  <table><tr><th style="width:8%">연도</th><th style="width:8%">간지</th><th>{esc(F.who)} 인연 신호</th><th style="width:10%">운</th><th>{esc(M.who)} 인연 신호</th><th style="width:10%">운</th><th style="width:15%"></th></tr>{yrows}</table>
  <p class="small" style="margin-top:2mm">{self.timing_text(top3)}</p>
-</div><div class="foot">MYEONGUN · __PG__</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
 
     def timing_text(self, top3):
         F, M = self.F, self.M; b = top3[0]; gz = E.year_gz(b)
@@ -545,7 +545,7 @@ class Gunghap:
  <div class="rule"></div>
  <div class="tiny"><b>판독 참고와 한계</b> · {" ".join(lim)}<br><br>
  <b>안내</b> · 이 감정서는 전통 명리학(자평명리)의 궁합 이론에 따른 해석이에요. 과학적으로 검증된 예측이 아니며 오락과 자기 이해를 위한 참고 자료예요. 중요한 결정은 두 분의 대화와 전문가 상담을 우선하세요.</div>
-</div><div class="foot">MYEONGUN · __PG__ · 명운 결혼 궁합 감정서</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__ · 손명리 결혼 궁합 감정서</div></section>'''
 
     def cautions(self):
         F, M = self.F, self.M
@@ -578,7 +578,7 @@ CSS_EXTRA = """
 
 
 def main():
-    ap = argparse.ArgumentParser(description="명운 결혼 궁합 감정서")
+    ap = argparse.ArgumentParser(description="손명리 결혼 궁합 감정서")
     for p in ("f", "m"):
         ap.add_argument(f"--{p}-name"); ap.add_argument(f"--{p}-date", required=True); ap.add_argument(f"--{p}-lunar", action="store_true")
         ap.add_argument(f"--{p}-leap", action="store_true"); ap.add_argument(f"--{p}-time"); ap.add_argument(f"--{p}-time2", help="시각 범위의 끝(범위로 받았을 때)")
@@ -633,7 +633,7 @@ def assemble_gunghap(a, now):
     html = re.sub("__PG__", pg, html)
     for bad in ("\ubc31\uc6b4", "\ub3c4\uc0ac", "\ucca0\ud559\uc6d0", "\ube14\ub85c\uadf8"): assert bad not in html, bad
     css = open(os.path.join(HERE, "assets", "style.css")).read() + CSS_EXTRA
-    doc = f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>명운 결혼 궁합 감정서</title><link rel="stylesheet" href="style.css"></head><body>\n{html}\n</body></html>'
+    doc = f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>손명리 결혼 궁합 감정서</title><link rel="stylesheet" href="style.css"></head><body>\n{html}\n</body></html>'
     return doc, css, G
 
 

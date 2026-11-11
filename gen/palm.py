@@ -259,7 +259,7 @@ def palm_html(spec, c, overlay_rel, start_no):
   <div>{item(items[0])}{item(items[1])}</div>
  </div>
  {item(items[2])}
-</div><div class="foot">MYEONGUN · __PG__</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
     by = c.c.solar.year; fl = spec.get("flags", {})
     tl = []
     cm = fl.get("head", {}).get("split_cm")
@@ -277,5 +277,5 @@ def palm_html(spec, c, overlay_rel, start_no):
  {item(items[3])}{item(items[4])}{item(items[5])}
  {timeline}
  <p class="tiny">※ 손금은 생활에 따라 조금씩 변해요. 사진 한 장으로 본 판독이라 조명·각도에 따라 옅은 선은 놓칠 수 있어요.</p>
-</div><div class="foot">MYEONGUN · __PG__</div></section>'''
+</div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
     return [p1, p2], items, lucky

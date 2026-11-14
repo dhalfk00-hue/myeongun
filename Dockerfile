@@ -6,6 +6,7 @@ ENV PYTHONUNBUFFERED=1 \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     MYEONGUN_CACHE=/tmp/myeongun-cache \
     MYEONGUN_DEV_UNLOCK=1 \
+    PALM_ENABLED=0 \
     TZ=Asia/Seoul \
     PORT=10000
 

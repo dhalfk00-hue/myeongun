@@ -6,14 +6,14 @@
 LLM·유료 API 호출 없음."""
 from __future__ import annotations
 
-import hashlib, hmac, html as _html, json, math, os, re, secrets, shutil, sys, time
+import hashlib, hmac, html as _html, json, math, os, re, secrets, shutil, sys, threading, time
 from argparse import Namespace
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel, Field
 
 from . import places_kr as PK
@@ -30,12 +30,21 @@ import lunar as L             # noqa: E402
 import make_report as MR      # noqa: E402
 import make_gunghap as MG     # noqa: E402
 import palm as PM             # noqa: E402
+import jobs as JB             # noqa: E402  (app1113: 직업 상황별 문장)
+import advice as AV           # noqa: E402
+import topics as TP           # noqa: E402  (tier1115: 주제 이름)
+import tiers as TR            # noqa: E402  (tier1115: 등급별 감정서)
+
+# app1113: jobs.apply()가 texts/advice 사전을 제자리에서 바꾸므로, 감정서 조립은 한 번에 한 사람씩
+_GEN_LOCK = threading.RLock()
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = Path(os.environ.get("MYEONGUN_CACHE", ROOT / "cache"))
 CACHE.mkdir(parents=True, exist_ok=True)
 KEEP_HOURS = 24          # 감정서 파일은 하루 뒤 자동 삭제
 DEV_UNLOCK = os.environ.get("MYEONGUN_DEV_UNLOCK", "0") == "1"
+# nopalm1113: 손금 기능 스위치 하나. 출시판은 꺼 둠(사주·궁합만). 다시 켜려면 환경 변수 PALM_ENABLED=1
+PALM_ENABLED = os.environ.get("PALM_ENABLED", "0") == "1"
 BANNED = ("\ubc31\uc6b4", "\ub3c4\uc0ac", "\ucca0\ud559\uc6d0", "\ube14\ub85c\uadf8")
 
 PRODUCTS = {   # Play Console 인앱 상품 ID 후보 · 가격(원)은 나중에 콘솔에서 정함
@@ -162,6 +171,8 @@ class BirthIn(BaseModel):
     time: Optional[str] = None        # HH:MM, 모르면 null
     time2: Optional[str] = None       # 범위 끝 (선택)
     place: str = "서울"
+    job: Optional[str] = "미정"       # app1113: 직장인|사업자(사업가)|프리랜서|주부|학생|무직|미정
+    time_rule: Optional[str] = "경도"  # tier1115: 시 경계 기준 — 경도(기본, 출생지 경도) | 30분(흔한 만세력 관례)
 
 
 def _hm(t):
@@ -206,6 +217,9 @@ class P:   # 정리된 한 사람
             self.place_arg, self.place_label = PK.resolve(b.place)
         except KeyError:
             raise HTTPException(400, f"출생지를 목록에서 골라 주세요 ({b.place})")
+        jb = "사업자" if b.job == "사업가" else b.job
+        self.job = jb if jb in JB.JOBS else "미정"
+        self.time_rule = "30분" if b.time_rule == "30분" else "경도"
         self.now = now
         self.note = None
         self.time = self.t1
@@ -227,16 +241,27 @@ class P:   # 정리된 한 사람
     def run(self, t="__self__"):
         t = self.time if t == "__self__" else t
         try:
-            return E.run_saju(self.date, t, self.lunar, self.leap, self.gender, self.place_arg, self.now.year, self.now.year + 11)
+            return E.run_saju(self.date, t, self.lunar, self.leap, self.gender, self.calc_place(), self.now.year, self.now.year + 11)
         except SystemExit as e:
             raise HTTPException(400, f"입력을 확인해 주세요 ({e})")
 
-    def key(self):
-        return {"n": self.name, "g": self.gender, "l": self.lunar, "lp": self.leap, "d": self.date, "t": self.time, "p": self.place_arg}
+    def calc_place(self, rule=None):
+        """tier1115: '30분' 기준은 표준시 −30분(동경 127.5°) 관례, 기본 '경도'는 출생지 경도 (생성기 make_report.prepare와 같아요)"""
+        return "127.5" if (rule or self.time_rule) == "30분" else self.place_arg
 
-    def args(self, palm=None):
-        return Namespace(name=self.name, gender=self.gender, date=self.date, lunar=self.lunar, leap=self.leap, time=self.time,
-                         place=self.place_arg, place_label=self.place_label, palm_json=palm, palm_photo=None)
+    def key(self):
+        return {"n": self.name, "g": self.gender, "l": self.lunar, "lp": self.leap, "d": self.date, "t": self.time, "p": self.place_arg, "j": self.job, "r": self.time_rule}
+
+    def chart_key(self):
+        """tier1115: 사주(명식) 하나를 가리키는 키 — 이름·직업은 빼요(같은 사주면 이름을 바꿔도 같은 구매)."""
+        return "c" + _sign("chart:" + json.dumps({"g": self.gender, "l": self.lunar, "lp": self.leap, "d": self.date, "t": self.time,
+                                                   "p": self.place_arg, "r": self.time_rule}, sort_keys=True))[:15]
+
+    def args(self, palm=None, **kw):
+        ns = Namespace(name=self.name, gender=self.gender, date=self.date, lunar=self.lunar, leap=self.leap, time=self.time,
+                       place=self.place_arg, place_label=self.place_label, palm_json=palm, palm_photo=None, job=self.job, time_rule=self.time_rule)
+        for k, v in kw.items(): setattr(ns, k, v)
+        return ns
 
 
 EL_HAN = {"목": "木", "화": "火", "토": "土", "금": "金", "수": "水"}
@@ -258,7 +283,42 @@ def _year_card(rep, y, now):
     from texts import EL_KO as _ek  # noqa
     return {"year": y, "gz": gz, "ko": B.ko(gz), "star": rep.ystar[y], "title": rep.year_title(y),
             "line": safe_html(rep.year_line(y)), "months": safe_html(rep.best_months_phrase(y)) if y in (now.year, now.year + 1) else "",
-            "age": c.age(y)}
+            "age": c.age(y), "adv": _adv(rep, y)}
+
+
+def _adv(rep, y):
+    """app1113: 좋은 해엔 '조심', 약한 해엔 '보완' 한 줄 (생성기 advice.py 그대로)."""
+    try:
+        items = rep.yadv(y, "gen", 2)
+    except Exception:
+        items = []
+    if not items:
+        k, t = rep.yshort(y); items = [(k, t)]
+    seen, out = set(), []
+    for k, t in items:
+        t = re.sub(r"<[^>]+>", "", t).strip()
+        if t and t not in seen:
+            seen.add(t); out.append({"kind": k, "text": safe_html(t)})
+    return out[:2]
+
+
+def gen_money(rep):
+    """app1113: 손금×사주 재물운이 감정서 생성기와 같은 재물 정점·별점·용신을 쓰도록 넘겨 주는 값."""
+    c = rep.c
+    inv = {v: k for k, v in c.gel.items()}
+    p = rep.best_daeun_money()
+    peak = None
+    if p:
+        peak = {"gz": p["gz"], "ko": p.get("ko") or B.ko(p["gz"]), "a0": p["a0"], "a1": p["a1"], "y0": p["y0"], "y1": p["y1"] - 1,
+                "good": c.tone(c.score(p["gz"])[0]) == "good", "phrase": rep.peak_phrase(p)}
+    dsc = {}
+    for d in c.daeun_periods():
+        sc = c.score(d["gz"])[0]
+        dsc[d["a0"]] = {"score": round(sc, 2), "star": c.stars(sc), "tone": c.tone(sc)}
+    return {"yong_g": inv.get(c.yong), "hee_g": inv.get(c.hee), "gi_g": inv.get(c.gi), "jae_fav": c.fav[c.gel["재성"]],
+            "sik_fav": c.fav[c.gel["식상"]], "strong": c.strong, "peak": peak, "no_peak": rep.NO_PEAK + ".",
+            "window": rep.money_window().strip(), "ystar": {int(y): rep.ystar[y] for y in rep.years}, "daeun": dsc,
+            "job": JB.CUR["job"]}
 
 
 def _now():
@@ -267,6 +327,11 @@ def _now():
 
 # ------------------------------------------------------------------ 사주
 def saju_summary(p: P, palm_spec=None):
+    with _GEN_LOCK:
+        return _saju_summary(p, palm_spec)
+
+
+def _saju_summary(p: P, palm_spec=None):
     now = p.now
     args = p.args(palm_spec)
     doc, assets, rep, c = MR.assemble(args, now)
@@ -278,7 +343,7 @@ def saju_summary(p: P, palm_spec=None):
     from texts import STEM
     st = STEM[c.dm]
     return {
-        "rid": rid, "kind": kind, "product": PRODUCTS[kind],
+        "rid": rid, "kind": kind, "product": PRODUCTS[kind], "chart": p.chart_key(), "time_rule": p.time_rule,
         "who": rep.who, "gender": p.gender, "solar_date": c.r["solar_date"], "place": p.place_label,
         "date_label": (f"음력 {p.date.replace('-', '.')}{'(윤달)' if p.leap else ''} → 양력 {c.r['solar_date'].replace('-', '.')}" if p.lunar else f"양력 {p.date.replace('-', '.')}")
                       + (f" · {MR.time_label(p.time)}" if p.time else " · 시간 모름"),
@@ -289,6 +354,7 @@ def saju_summary(p: P, palm_spec=None):
         "key3": [{"title": safe_html(t), "text": safe_html(d.replace(" __PALM_KEY2__", ""))} for t, d in (k5[0], k5[1], k5[3])],
         "years": [_year_card(rep, y, now) for y in (now.year, now.year + 1)],
         "decade": [{"year": y, "star": rep.ystar[y]} for y in rep.years],
+        "job": p.job, "money_gen": gen_money(rep),
         "locked": ["성격·재물 그릇 상세", "직업·연애(배우자)·건강", "대운 10년 흐름", f"{now.year}년 남은 달 · {now.year + 1}년 월별 운세",
                    "10년 시기표(좋은 해·지킬 해)", "용신 개운법(색·방향·숫자)"] + (["손금 6대 선 × 사주 교차 풀이", "손금 유년법 타임라인"] if palm_spec else []),
     }
@@ -304,6 +370,7 @@ def api_saju(req: SajuReq):
     _gc()
     p = P(req.birth, _now())
     out = saju_summary(p)
+    out.pop("money_gen", None)
     out["unlocked"] = _unlock_ok(out["rid"], req.unlock)
     return clean(out)
 
@@ -328,6 +395,12 @@ def api_gunghap(req: GunghapReq):
         for k, v in (("name", x.name), ("date", x.date), ("lunar", x.lunar), ("leap", x.leap), ("time", x.t1), ("time2", x.t2),
                      ("place", x.place_arg), ("place_label", x.place_label)):
             setattr(ns, f"{pre}_{k}", v)
+    with _GEN_LOCK:   # app1113: 궁합은 직업 구분 없이 생성기 원래 문장으로 (조립·요약 모두 잠금 안에서)
+        JB._restore(); JB.CUR["job"] = "미정"
+        return _gunghap_out(req, F, M, ns, now)
+
+
+def _gunghap_out(req, F, M, ns, now):
     doc, css, G = MG.assemble_gunghap(ns, now)
     rid = _rid("gunghap", {"f": F.key(), "m": M.key(), "t2": [F.t2, M.t2], "day": now.date().isoformat()})
     _store(rid, "gunghap", doc, css)
@@ -345,8 +418,8 @@ def api_gunghap(req: GunghapReq):
         "items": [{"name": n, "max": mx, "score": sc} for n, mx, sc, _ in G.score_items],
         "best_years": [{"year": y, "gz": E.year_gz(y)} for y in best[:3]],
         "both_good": G.both_good,
-        "locked": ["8항목 점수 근거", "배우자궁·띠·원진·합충 상세", "성격·다툼 포인트·재물 관리·자녀", "대운 비교 · 연도별 인연 교차",
-                   "결혼 적기와 좋은 달", "함께 조심할 해 · 개운법"],
+        "locked": ["8항목 점수 근거", "배우자궁·띠·원진·합충 상세", "성격·다툼 포인트·재물 관리·자녀", "대운 비교 · 연도별 관계 신호",
+                   "함께 계획하기 좋은 해 · 무난한 달", "함께 조심할 해 · 개운법"],
         "unlocked": False,
     }
     out["unlocked"] = _unlock_ok(rid, req.unlock)
@@ -449,6 +522,8 @@ def palm_spec(req: PalmReq) -> dict:
 
 @router.post("/api/v2/palm")
 def api_palm(req: PalmReq):
+    if not PALM_ENABLED:
+        raise HTTPException(404, "준비 중인 기능이에요")
     _gc()
     feats = {k: v for k, v in (req.features or {}).items() if k != "_measure"}
     feats["hand"] = req.hand
@@ -467,18 +542,18 @@ def api_palm(req: PalmReq):
     if not res.get("valid"):
         raise HTTPException(400, res.get("retry_tip") or "손금 특징을 확인해 주세요")
     res["lines"] = [l for l in res["lines"] if l["name"] != "결혼선"]
-    six = PS.build(res["features"] | {"money_marks": feats.get("money_marks") or [], "sun_band": feats.get("sun_band") or ""}, res, r)
+    summ = saju_summary(p, palm_spec(req)) if p else None   # app1113: 생성기 별점·용신·재물 정점을 손금 풀이에도 씀
+    six = PS.build(res["features"] | {"money_marks": feats.get("money_marks") or [], "sun_band": feats.get("sun_band") or ""}, res, r,
+                   gen=summ["money_gen"] if summ else None, job=p.job if p else "미정")
     out = {"kind": "palm", "hand": req.hand, "money": six["money"], "sections": six["sections"],
            "lines": [{"name": l["name"], "observed": l.get("observed"), "meaning": l.get("meaning"), "score": l.get("score")} for l in res["lines"]],
            "product": PRODUCTS["palm"], "rid": None, "unlocked": False}
     if p:
-        spec = palm_spec(req)
-        summ = saju_summary(p, spec)
         out.update({"rid": summ["rid"], "saju": {k: summ[k] for k in ("who", "gender", "pillars", "key3", "years", "decade", "date_label", "place", "time_note",
                                                                          "elements", "day_master", "yong", "hee", "gyeok", "strength")},
                     "locked": ["손금 6대 선 × 사주 교차 풀이 전체", "돈 들어오는 시기(재운선 × 대운·세운)", "손금 유년법 타임라인"] + [x for x in summ["locked"] if "손금" not in x]})
-        out["advice"] = PS.advice(res["features"], r, summ["years"])
-        out["pairs"] = PS.pairs(r, now.date() if hasattr(now, "date") else None)
+        out["advice"] = PS.advice(res["features"], r, summ["years"], job=p.job)
+        out["pairs"] = PS.pairs(r, now.date() if hasattr(now, "date") else None, job=p.job)
         out["unlocked"] = _unlock_ok(summ["rid"], req.unlock)
     # 무료: 재물운 한 줄 + 대박손금 표식 + 선별 한 줄 / 잠금: 돈 들어오는 시기·선별 상세·사주 교차
     m = out["money"]
@@ -494,12 +569,15 @@ class PurchaseReq(BaseModel):
     rid: str
     product: str
     token: str                    # Google Play purchaseToken (연동 후) / 개발용 "DEV-UNLOCK"
+    owns: list = []               # tier1115: 이 기기에 저장된 소유 토큰(업그레이드 확인용)
 
 
 @router.post("/api/v2/purchase")
 def api_purchase(req: PurchaseReq):
     if not re.fullmatch(r"[a-z0-9]{8,40}", req.rid) or not (CACHE / req.rid).exists():
         raise HTTPException(404, "감정서를 다시 만들어 주세요")
+    if req.product in TIER_PRODUCT_IDS:   # tier1115: 주제 심층 · 프리미엄 · 차액 업그레이드
+        return _tier_purchase(req)
     if req.product not in {v["id"] for v in PRODUCTS.values()}:
         raise HTTPException(400, "상품을 확인해 주세요")
     if DEV_UNLOCK and req.token == "DEV-UNLOCK":
@@ -522,7 +600,11 @@ def report_view(rid: str, u: str = Query("")):
     d = _rdir(rid)
     if not _unlock_ok(rid, u):
         raise HTTPException(402, "전체 감정서는 잠금 해제 후 볼 수 있어요")
-    return HTMLResponse(d.joinpath("report.html").read_text(), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex"})
+    doc = d.joinpath("report.html").read_text()
+    fit = getattr(MR, "VIEW_FIT_JS", "")   # sync1114: 화면에서도 PDF처럼 넘친 쪽을 나누고 살짝 축소 (잘림 방지)
+    if fit and "</body>" in doc:
+        doc = doc.replace("</body>", fit + "</body>", 1)
+    return HTMLResponse(doc, headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex"})
 
 
 @router.get("/api/v2/report/{rid}/{asset}")
@@ -533,10 +615,6 @@ def report_asset(rid: str, asset: str):
     return FileResponse(d / asset, headers={"Cache-Control": "no-store"})
 
 
-import asyncio as _asyncio
-_PDF_LOCK = _asyncio.Lock()
-
-
 @router.get("/api/v2/report/{rid}.pdf")
 async def report_pdf(rid: str, u: str = Query("")):
     d = _rdir(rid)
@@ -544,14 +622,11 @@ async def report_pdf(rid: str, u: str = Query("")):
         raise HTTPException(402, "PDF는 잠금 해제 후 받을 수 있어요")
     pdf = d / "report.pdf"
     if not pdf.exists():
-        # 앱 보기용 CSS 없이 인쇄용으로 렌더. 메모리가 작아 브라우저는 한 번에 하나만 띄움
-        async with _PDF_LOCK:
-            if not pdf.exists():
-                tmp = d / "report.tmp.pdf"
-                await MR.render(str(d / "report.html"), str(tmp))
-                tmp.replace(pdf)
+        # 앱 보기용 CSS 없이 인쇄용으로 렌더
+        await MR.render(str(d / "report.html"), str(pdf))
     kind = json.loads((d / "meta.json").read_text())["kind"]
-    fname = {"saju": "sonmyeongri_saju.pdf", "gunghap": "sonmyeongri_gunghap.pdf", "palm": "sonmyeongri_saju_palm.pdf"}[kind]
+    meta = json.loads((d / "meta.json").read_text())
+    fname = {"saju": "sonmyeongri_saju.pdf", "gunghap": "sonmyeongri_gunghap.pdf", "palm": "sonmyeongri_saju_palm.pdf"}.get(kind) or f"sonmyeongri_{meta.get('tier', 'report')}.pdf"
     return FileResponse(pdf, media_type="application/pdf", filename=fname, headers={"Cache-Control": "no-store"})
 
 
@@ -562,4 +637,160 @@ def api_places():
 
 @router.get("/api/v2/config")
 def api_config():
-    return {"products": PRODUCTS, "dev_unlock": DEV_UNLOCK, "keep_hours": KEEP_HOURS}
+    prods = PRODUCTS if PALM_ENABLED else {k: v for k, v in PRODUCTS.items() if k != "palm"}
+    return {"products": prods, "dev_unlock": DEV_UNLOCK, "keep_hours": KEEP_HOURS, "palm_enabled": PALM_ENABLED,
+            "tiers": TIERS, "topics": [{"key": k, "ko": TP.KO[k], "title": TP.TITLE[k], "partner": k == "gunghap"} for k in TP.TOPICS]}
+
+
+@router.get("/flags.js")
+def flags_js():
+    """nopalm1113: 화면이 쓰는 기능 스위치. index.html·privacy.html 맨 위에서 먼저 읽어요."""
+    on = "true" if PALM_ENABLED else "false"
+    js = f"window.PALM_ENABLED={on};document.documentElement.classList.toggle('palm-on',{on});document.documentElement.classList.toggle('palm-off',!{on});"
+    return Response(js, media_type="application/javascript", headers={"Cache-Control": "no-cache"})
+
+
+# ------------------------------------------------------------------ tier1115: 등급별 감정서 (기본 무료 · 주제 심층 2,900원 · 프리미엄 9,900원)
+TIERS = {
+    "free": {"id": None, "price": 0, "title": "기본 감정서", "pages": "2~3쪽",
+             "incl": ["명식(네 기둥)과 오행", "타고난 성격", "용신 한눈에", "올해 운세 한 장"]},
+    "focus": {"id": "focus_2900", "price": 2900, "title": "주제 심층 감정서 · 주제 2개", "pages": "8~10쪽",
+              "incl": ["기본 감정서 전부", "고른 주제 2개: 타고난 바탕 · 대운 10년 · 해마다 조심/보완 · 힘이 실리는 해와 조심할 해", "개운법"]},
+    "premium": {"id": "premium_9900", "price": 9900, "title": "프리미엄 감정서 · 전체 주제", "pages": "약 20쪽",
+                "incl": ["용신·격국 풀이 · 성격", "대운 10년 흐름 · 대운 × 주제 표", "돈·직업·사업·결혼·이사·건강·자녀 7개 주제 (상대 정보를 넣으면 궁합까지)",
+                         "올해·내년 월별 운세", "개운법"]},
+}
+UPGRADE = {"id": "upgrade_7000", "price": 7000, "title": "프리미엄으로 올리기 · 차액", "from": "focus_2900", "to": "premium_9900"}
+TIER_PRODUCT_IDS = {"focus_2900": "focus", "premium_9900": "premium", "upgrade_7000": "premium"}
+
+
+def _topics_key(topics):
+    return "+".join(sorted(topics)) if topics else "-"
+
+
+def _own_token(tier, chart, topics):
+    """소유 토큰 own.<등급>.<사주키>.<주제>.<서명> — 기기에 저장, 서버 비밀키로만 만들 수 있어요."""
+    tk = _topics_key(topics if tier == "focus" else [])
+    msg = f"own.{tier}.{chart}.{tk}"
+    return msg + "." + _sign("own:" + msg)[:20]
+
+
+def _owns(tokens, chart):
+    """이 사주(chart)에 대해 확인된 소유: {('focus', 'money+job'), ('premium', '-')}"""
+    out = set()
+    for t in (tokens or [])[:40]:
+        if not isinstance(t, str): continue
+        parts = t.split(".")
+        if len(parts) != 5 or parts[0] != "own": continue
+        msg = ".".join(parts[:4])
+        if parts[2] == chart and parts[1] in ("focus", "premium") and hmac.compare_digest(parts[4], _sign("own:" + msg)[:20]):
+            out.add((parts[1], parts[3]))
+    return out
+
+
+def _covers(owns, tier, topics):
+    if tier == "free": return True
+    if ("premium", "-") in owns: return True        # 프리미엄을 산 사주는 주제 심층도 모두 열려요
+    return tier == "focus" and ("focus", _topics_key(topics)) in owns
+
+
+def _offer(owns, tier, topics):
+    """지금 사야 할 상품 — 주제 심층을 이미 산 사주가 프리미엄을 고르면 차액 7,000원만"""
+    if _covers(owns, tier, topics): return None
+    if tier == "premium" and any(k == "focus" for k, _ in owns):
+        return {**UPGRADE, "pages": TIERS["premium"]["pages"], "full_price": TIERS["premium"]["price"]}
+    t = TIERS[tier]
+    return {"id": t["id"], "price": t["price"], "title": t["title"], "pages": t["pages"]}
+
+
+class TierReq(BaseModel):
+    birth: BirthIn
+    tier: str = "free"                # free | focus | premium
+    topics: list = []                 # focus: 정확히 2개 (money job biz love move gunghap health kids 또는 한글)
+    partner: Optional[BirthIn] = None # 궁합 주제(또는 프리미엄 궁합)에 필요
+    owns: list = []                   # 기기에 저장된 소유 토큰
+
+
+@router.post("/api/v2/hour_check")
+def api_hour_check(b: BirthIn):
+    """tier1115: 출생 시각이 시(時)의 경계 근처라 경도 보정과 30분 관례의 시주가 달라지면 두 가지를 보여 줘요."""
+    p = P(b, _now())
+    if not p.time:
+        return {"differ": False}
+    def hour(rule):
+        r = E.run_saju(p.date, p.time, p.lunar, p.leap, p.gender, p.calc_place(rule), p.now.year, p.now.year)
+        hp = next(x for x in r["pillars"] if x["name"] == "시")
+        lt = r["time_correction"]["local_solar_time"][-5:]
+        return {"gz": hp["gz"], "ko": hp["ko"], "local": lt}
+    a, c = hour("경도"), hour("30분")
+    if a["gz"] == c["gz"]:
+        return {"differ": False, "gz": a["gz"]}
+    return {"differ": True, "options": [
+        {"rule": "경도", "gz": a["gz"], "ko": a["ko"], "local": a["local"], "default": True,
+         "title": f"출생지 경도로 보정 · {a['gz']}({a['ko']})시", "desc": f"{p.place_label} 경도로 실제 태양 시각({a['local']})을 계산해요. 이 앱의 기본이에요."},
+        {"rule": "30분", "gz": c["gz"], "ko": c["ko"], "local": c["local"], "default": False,
+         "title": f"흔한 만세력 방식 · {c['gz']}({c['ko']})시", "desc": f"표준시에서 30분을 빼는 관례({c['local']})예요. 다른 만세력과 맞춰 보고 싶을 때 골라요."}]}
+
+
+@router.post("/api/v2/tier")
+def api_tier(req: TierReq):
+    _gc()
+    now = _now()
+    p = P(req.birth, now)
+    tier = req.tier if req.tier in TIERS else None
+    if not tier:
+        raise HTTPException(400, "등급을 확인해 주세요")
+    try:
+        topics = TP.parse_topics(",".join(str(x) for x in (req.topics or [])))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    if tier == "focus" and len(topics) != 2:
+        raise HTTPException(400, "주제를 정확히 2개 골라 주세요")
+    if tier != "focus":
+        topics = []
+    pt = None
+    if req.partner and (tier == "premium" or "gunghap" in topics):
+        pt = P(req.partner, now)
+        if pt.gender == p.gender:
+            raise HTTPException(400, "궁합은 남녀 두 사람 기준의 전통 이론이라, 상대의 성별을 확인해 주세요")
+    if "gunghap" in topics and not pt:
+        raise HTTPException(400, "궁합을 고르면 상대의 생년월일을 넣어 주세요")
+    kw = dict(tier=tier, topics=",".join(topics))
+    if pt:
+        kw.update(partner_name=pt.name, partner_gender=pt.gender, partner_date=pt.date, partner_time=pt.time, partner_place=pt.place_arg,
+                  partner_place_label=pt.place_label, partner_lunar=pt.lunar, partner_leap=pt.leap)
+    chart = p.chart_key()
+    with _GEN_LOCK:
+        try:
+            doc, assets, rep, c = MR.assemble(p.args(**kw), now)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        finally:
+            JB.apply("미정")
+    css = open(os.path.join(GEN_DIR, "assets", "style.css")).read()
+    rid = _rid("tier", {"p": p.key(), "k": kw, "pt": pt.key() if pt else None, "day": now.date().isoformat()})
+    _store(rid, "tier", doc, css, assets)
+    (CACHE / rid / "meta.json").write_text(json.dumps({"kind": "tier", "tier": tier, "topics": topics, "chart": chart, "created": time.time()}))
+    owns = _owns(req.owns, chart)
+    unlocked = _covers(owns, tier, topics)
+    out = {"rid": rid, "tier": tier, "topics": topics, "topics_ko": [TP.KO[t] for t in topics], "chart": chart,
+           "title": TIERS[tier]["title"], "pages": TIERS[tier]["pages"], "unlocked": unlocked,
+           "unlock": _sign("unlock:" + rid) if unlocked else None, "offer": _offer(owns, tier, topics)}
+    return clean(out)
+
+
+def _tier_purchase(req):
+    meta = json.loads((CACHE / req.rid / "meta.json").read_text())
+    if meta.get("kind") != "tier":
+        raise HTTPException(400, "상품을 확인해 주세요")
+    tier, topics, chart = meta["tier"], meta.get("topics") or [], meta["chart"]
+    if TIER_PRODUCT_IDS[req.product] != tier:
+        raise HTTPException(400, "고른 감정서와 상품이 달라요")
+    owns = _owns(req.owns, chart)
+    if req.product == "upgrade_7000" and not any(k == "focus" for k, _ in owns):
+        raise HTTPException(400, "차액 업그레이드는 이 사주로 주제 심층을 산 기록이 있어야 해요")
+    if DEV_UNLOCK and req.token == "DEV-UNLOCK":
+        own = _own_token(tier, chart, topics)
+        return {"ok": True, "unlock": _sign("unlock:" + req.rid), "own": own, "chart": chart, "mode": "dev"}
+    # TODO(Play 결제): billing_todo_ko.md(출시 문서) — purchaseToken을 Play Developer API로 확인 → 사주키와 묶어 기록 → 소비(consume)
+    raise HTTPException(402, "결제 연동을 준비 중이에요")

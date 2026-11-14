@@ -80,3 +80,12 @@ ul { margin:0 0 2mm; padding-left:5mm; } li { margin-bottom:1.1mm; }
 .page > .in { width:100%; }
 .mchart { table-layout:fixed; }
 .key5 .t strong { color:#f0cd7d; }
+
+/* fix1113b: 조심·보완 조언 */
+.adv-c{color:#a4461f;font-weight:700}
+.adv-s{color:#1f6b5c;font-weight:700}
+li.adv{list-style:none;margin-left:-4mm}
+span.adv{display:block;margin-top:0.6mm;font-size:0.95em}
+.advbox{border-left:2.5px solid #c9a24a;padding:1mm 0 1mm 3mm;margin:2mm 0}
+.advbox ul{margin:0;padding-left:4mm}
+.sub.cont { margin:0 0 3mm; font-size:9.4pt; color:#a58a55; letter-spacing:0.08em; }

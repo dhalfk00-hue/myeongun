@@ -13,6 +13,7 @@ sys.path.insert(0, HERE)
 import engine as E
 import build as B
 import lunar as L
+from josa import josa, particle, fix_josa
 
 
 def time_label(t):
@@ -23,11 +24,16 @@ def time_label(t):
     return f"{part} {hh}시" + (f" {m}분" if m else "")
 
 
-def assemble(args, now):
+def prepare(args, now):
+    """tier1115: 입력 → (Chart, Report). 종합 감정서와 등급별 감정서가 같은 계산을 써요."""
     y, m, d = map(int, args.date.split("-"))
     if args.lunar:
         sd = L.lunar_to_solar(y, m, d, args.leap)  # 잘못된 음력 날짜면 여기서 에러
-    r = E.run_saju(args.date, args.time, args.lunar, args.leap, args.gender, args.place, now.year, now.year + 11)
+    import jobs as JB
+    JB.apply(getattr(args, "job", None) or "미정")
+    rule = getattr(args, "time_rule", None) or "경도"
+    calc_place = "127.5" if rule == "30분" else args.place  # sync1114: '30분' = 표준시 −30분(동경 127.5°) 관례, 기본은 출생지 경도
+    r = E.run_saju(args.date, args.time, args.lunar, args.leap, args.gender, calc_place, now.year, now.year + 11)
     c = E.Chart(r, args.gender, now)
     sd = r["solar_date"]
     if args.lunar:
@@ -35,8 +41,31 @@ def assemble(args, now):
     else:
         dl = f"양력 {y}년 {m}월 {d}일 {time_label(args.time)}"
     place = getattr(args, "place_label", None) or args.place or "서울"
-    inp = dict(date=args.date, lunar=args.lunar, leap=args.leap, time=args.time, date_label=dl, place_label=place)
+    try: float(place); place = "출생지"
+    except (TypeError, ValueError): pass
+    inp = dict(date=args.date, lunar=args.lunar, leap=args.leap, time=args.time, date_label=dl, place_label=place,
+               time_rule=rule, place=args.place)
     rep = B.Report(c, args.name, inp, now)
+    return c, rep, inp
+
+
+def finish(html, title="손명리 감정서"):
+    """쪽 번호 · 조사 고치기 · 금지어 검사 → 완성 문서"""
+    n = 0
+    def pg(mm):
+        nonlocal n; n += 1; return str(n)
+    html = re.sub("__PG__", pg, html)
+    html = fix_josa(html)
+    for bad in ("\ubc31\uc6b4", "\ub3c4\uc0ac", "\ucca0\ud559\uc6d0", "\ube14\ub85c\uadf8"):
+        assert bad not in html, f"금지어 포함: {bad}"
+    return f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>{title}</title><link rel="stylesheet" href="style.css"></head><body>\n{html}\n</body></html>'
+
+
+def assemble(args, now):
+    if getattr(args, "tier", None):
+        import tiers as TR
+        return TR.assemble_tier(args, now)
+    c, rep, inp = prepare(args, now)
     palm = None
     if args.palm_json:
         import palm as PM
@@ -59,9 +88,21 @@ def assemble(args, now):
     if palm:
         fl = palm.get("flags", {})
         js = fl.get("jaeun", {}).get("state", "none")
-        hooks["__PALM_KEY2__"] = f"손금의 재운선은 {items[0]['tag']}이에요."
-        hooks["__PALM_HEALTH__"] = f"손금의 생명선은 {items[3]['tag']}이라 " + ("회복력이 좋은 편이에요. " if fl.get("life", {}).get("venus", "wide") == "wide" else "체력 관리가 특히 중요해요. ")
-        hooks["__PALM_TIMING__"] = "손금 유년법 · 운명선 × 두뇌선 = 35~38세, × 감정선 = 55세" + (", 재운선 = 50~55세 이후" if js == "above_heart" else "")
+        fs = fl.get("fate", {}).get("state", "clear")
+        jtag = items[0]["tag"]
+        ltag = items[3]["tag"]
+        if js == "none":
+            hooks["__PALM_KEY2__"] = "손금에서는 약지 아래 뚜렷한 재운선이 확인되지 않았어요."
+        else:
+            hooks["__PALM_KEY2__"] = f"손금의 재운선은 {josa(jtag, '이에요')}."
+        if fl.get("life", {}).get("venus", "wide") == "wide":
+            hooks["__PALM_HEALTH__"] = f"손금의 생명선은 {josa(ltag, '이라')} 체력과 활력, 추진력이 좋아요. "
+        else:
+            hooks["__PALM_HEALTH__"] = f"손금의 생명선은 {josa(ltag, '이라')} 체력 관리가 특히 중요해요. "
+        if fs == "none":
+            hooks["__PALM_TIMING__"] = "운명선이 뚜렷하지 않은 형 · 자유롭게 자기 길을 만드는 형"
+        else:
+            hooks["__PALM_TIMING__"] = "손금 유년법 · 운명선 × 두뇌선 = 35~38세, × 감정선 = 55세" + ((", 재운선 = 50~55세 이후" if rep.fifties_ok() else ", 재운선 = 50대는 지키고 관리하는 때") if js == "above_heart" else "")
         hooks["__PALM_CLOSING__"] = "손금도 같은 길을 가리키고 있어요."
         hooks["__PALM_LIMIT__"] = f"손금은 {palm.get('hand', '오른손')} 사진으로 판독했어요" + ("(반대 손 사진이 없어 양손 비교는 하지 않았어요). " if not palm.get("both_hands") else ". ")
     else:
@@ -70,37 +111,143 @@ def assemble(args, now):
     html = "\n".join(pages)
     html = html.replace("<li>__PALM_TIMING__</li>", f"<li>{hooks['__PALM_TIMING__']}</li>")
     for k, v in hooks.items(): html = html.replace(k, v)
-    n = 0
-    def pg(mm):
-        nonlocal n; n += 1; return str(n)
-    html = re.sub("__PG__", pg, html)
-    for bad in ("\ubc31\uc6b4", "\ub3c4\uc0ac", "\ucca0\ud559\uc6d0", "\ube14\ub85c\uadf8"):
-        assert bad not in html, f"금지어 포함: {bad}"
-    doc = f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>손명리 감정서</title><link rel="stylesheet" href="style.css"></head><body>\n{html}\n</body></html>'
-    return doc, assets, rep, c
+    return finish(html), assets, rep, c
 
 
-# 메모리 적은 서버(512MB)용: 프로세스 수·공유메모리 줄이기
-CHROME_ARGS = ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--no-zygote", "--disable-extensions",
-               "--disable-background-networking", "--disable-sync", "--mute-audio", "--no-first-run",
-               "--renderer-process-limit=1", "--js-flags=--max-old-space-size=192"]
-if os.environ.get("MYEONGUN_CHROME_SINGLE") == "1":
-    CHROME_ARGS.append("--single-process")
+LIMIT = 1045          # 쪽 안쪽 내용 높이 한도(px)
+ZOOM_MIN = 0.85       # 이보다 작게 줄이지 않아요(가독성)
+SPLIT_AT = int(LIMIT / ZOOM_MIN)  # 이 높이를 넘으면(0.85로도 못 담으면) 축소 대신 쪽을 나눠요
+SPLIT_JS = r"""([idx, LIM]) => {
+  const pages = () => [...document.querySelectorAll('.page')];
+  const meas = (s) => { const r = s.getBoundingClientRect(); let m = 0;
+    s.querySelectorAll('.in *').forEach(e => { const q = e.getBoundingClientRect(); if (q.height > 0) m = Math.max(m, q.bottom - r.top); }); return m; };
+  const targets = idx.map(i => pages()[i]);
+  targets.forEach(pg => {
+    const inEl = pg.querySelector('.in'); if (!inEl) return;
+    // tier1115: 흐름 쪽은 넘친 내용을 다음 흐름 쪽 맨 앞으로 밀어 넣어요(새 쪽을 끼우면 중간에 빈 쪽이 생겨요)
+    const nx = pg.nextElementSibling;
+    let np, ni, cont;
+    if (pg.classList.contains('flow') && nx && nx.classList && nx.classList.contains('flow') && nx.querySelector(':scope > .in')) {
+      np = nx; ni = nx.querySelector(':scope > .in');
+      cont = ni.querySelector(':scope > .sub.cont');
+      if (!cont) { cont = document.createElement('div'); cont.className = 'sub cont'; ni.insertBefore(cont, ni.firstChild); }
+    } else {
+      np = pg.cloneNode(false); ni = document.createElement('div'); ni.className = 'in'; np.appendChild(ni);
+      const ft = pg.querySelector('.foot'); if (ft) np.appendChild(ft.cloneNode(true));
+      pg.after(np);
+      cont = document.createElement('div'); cont.className = 'sub cont'; ni.appendChild(cont);
+    }
+    const front = () => cont.nextSibling;
+    // tier1115: 통째로 넘기는 표·목록 조각이 다음 쪽 맨 앞의 같은 원본 조각과 만나면 하나로 합쳐요(머리줄 반복 방지)
+    const put = (el) => {
+      const f = cont.nextElementSibling, sid = el.dataset && el.dataset.sid;
+      if (f && sid && f.dataset.sid === sid && f.tagName === el.tagName) {
+        if (el.tagName === 'TABLE') { const tb2 = f.querySelector('tbody') || f; const rs = [...el.querySelectorAll('tr')].slice(1); const at = tb2.children[1] || null; rs.forEach(r => tb2.insertBefore(r, at)); el.remove(); return; }
+        const u1 = el.tagName === 'UL' ? el : el.querySelector(':scope > ul'), u2 = f.tagName === 'UL' ? f : f.querySelector(':scope > ul');
+        if (u1 && u2) { const at = u2.firstChild; [...u1.children].forEach(li => u2.insertBefore(li, at)); if (el.dataset.splitUl === undefined) { ni.insertBefore(el, f); u1.append(...u2.children); f.remove(); } else el.remove(); return; }
+      }
+      ni.insertBefore(el, front());
+    };
+    let guard = 0;
+    while (meas(pg) > LIM && inEl.children.length > 2 && guard++ < 200) {
+      const last = inEl.lastElementChild;
+      const rows = last.tagName === 'TABLE' ? [...last.querySelectorAll('tr')] : null;
+      const lis = (!rows && last.querySelector) ? (last.tagName === 'UL' ? last : last.querySelector(':scope > ul')) : null;
+      if (!last.dataset.sid) last.dataset.sid = 's' + (window.__sid = (window.__sid || 0) + 1);   // tier1115: 나눈 조각은 같은 원본끼리만 이어요
+      const sid = last.dataset.sid;
+      if (rows && rows.length > 3) {   // 표는 머리줄을 복제해 행 단위로 넘겨요
+        let t2 = ni.querySelector(':scope > table[data-sid="' + sid + '"]');
+        if (!t2) { t2 = last.cloneNode(false); t2.dataset.split = sid; const hd = rows[0].cloneNode(true); const tb = document.createElement('tbody'); tb.appendChild(hd); t2.appendChild(tb); ni.insertBefore(t2, front()); }
+        const tb2 = t2.querySelector('tbody');
+        while (meas(pg) > LIM && last.querySelectorAll('tr').length > 2) { const rs = last.querySelectorAll('tr'); tb2.insertBefore(rs[rs.length - 1], tb2.children[1] || null); }
+        if (meas(pg) > LIM) { put(last); }   // 그래도 넘치면 표 전체를 넘겨요(앞 조각과 합쳐요)
+        continue;
+      }
+      if (lis && lis.children.length > 2) {   // 조언 목록은 항목 단위로
+        let box = ni.querySelector(':scope > [data-sid="' + sid + '"]');
+        if (!box) { box = last.cloneNode(true); box.dataset.splitUl = sid; const u = box.tagName === 'UL' ? box : box.querySelector(':scope > ul'); u.innerHTML = ''; [...box.children].forEach(ch => { if (ch !== u) ch.remove(); }); ni.insertBefore(box, front()); }
+        const u2 = box.tagName === 'UL' ? box : box.querySelector(':scope > ul');
+        while (meas(pg) > LIM && lis.children.length > 1) u2.insertBefore(lis.lastElementChild, u2.firstChild);
+        if (meas(pg) > LIM) { put(last); }
+        continue;
+      }
+      put(last);
+    }
+    // 제목·부제·구분선이 쪽 끝에 홀로 남지 않게 다음 쪽으로 함께 넘겨요
+    const lone = (e) => e && (/^H[23]$/.test(e.tagName) || e.classList.contains('sub') || e.classList.contains('rule'));
+    while (inEl.children.length > 2 && lone(inEl.lastElementChild)) ni.insertBefore(inEl.lastElementChild, front());
+    // tier1115: '(이어서)' 이름은 이 쪽에 남은 마지막 큰 제목(없으면 이 쪽의 이어서 이름)
+    const hs = [...inEl.children].filter(e => e.tagName === 'H2');
+    const oc = inEl.querySelector(':scope > .sub.cont');
+    cont.textContent = (hs.length ? hs[hs.length - 1].textContent.replace(/^\d+/, '').trim() : (oc ? oc.textContent.replace(/ \(이어서\)$/, '') : '')) + ' (이어서)';
+    const f1 = cont.nextElementSibling;
+    if (f1 && (f1.tagName === 'H2' || (f1.classList.contains('rule') && f1.nextElementSibling && f1.nextElementSibling.tagName === 'H2'))) {
+      cont.remove(); if (f1.classList.contains('rule')) f1.remove();
+    }
+  });
+  pages().forEach((s, i) => { const f = s.querySelector('.foot'); if (f) f.innerHTML = f.innerHTML.replace(/SONMYEONGRI · \d+/, 'SONMYEONGRI · ' + (i + 1)); });
+}"""
+
+
+# tier1115: 마지막 쪽에 끝맺음 안내(.tiny)만 조금 넘어간 경우, 앞 쪽을 조금만(0.92 이상) 줄여 함께 담아요(거의 빈 마지막 쪽 방지)
+TAIL_JS = r"""([LIM]) => {
+  const meas = (s) => { const r = s.getBoundingClientRect(); let m = 0;
+    s.querySelectorAll('.in *').forEach(e => { const q = e.getBoundingClientRect(); if (q.height > 0) m = Math.max(m, q.bottom - r.top); }); return m; };
+  const ps = [...document.querySelectorAll('.page')]; const L = ps[ps.length - 1], P = ps[ps.length - 2];
+  if (!L || !P || !L.classList.contains('flow') || !P.classList.contains('flow') || L.classList.contains('lite')) return 0;
+  const li = L.querySelector(':scope > .in'), pi = P.querySelector(':scope > .in'); if (!li || !pi || pi.dataset.z) return 0;
+  const kids = [...li.children].filter(e => !(e.classList.contains('sub') && e.classList.contains('cont')));
+  if (!kids.length || !kids.every(e => e.classList.contains('tiny') || e.classList.contains('rule') || e.tagName === 'HR')) return 0;
+  if (meas(L) > 0.3 * LIM) return 0;
+  kids.forEach(e => pi.appendChild(e));
+  const h = meas(P), z = Math.min(1, (LIM - 5) / h);
+  if (z < 0.92) { kids.forEach(e => li.appendChild(e)); return 0; }
+  if (z < 1) { pi.dataset.z = z; pi.style.zoom = z; }
+  L.remove();
+  [...document.querySelectorAll('.page')].forEach((s, i) => { const f = s.querySelector('.foot'); if (f) f.innerHTML = f.innerHTML.replace(/SONMYEONGRI · \d+/, 'SONMYEONGRI · ' + (i + 1)); });
+  return 1;
+}"""
+
+
+# 앱 화면(HTML 보기)에서도 PDF와 같은 쪽 나누기·축소를 브라우저에서 해 주는 스크립트 (report_api가 보기 응답에만 붙여요)
+VIEW_FIT_JS = ("<script>(()=>{const LIM=" + str(LIMIT) + ",SPL=" + str(SPLIT_AT) + ",ZMIN=" + str(ZOOM_MIN) + ";"
+               "const meas=(s)=>{const r=s.getBoundingClientRect();let m=0;s.querySelectorAll('.in *').forEach(e=>{const q=e.getBoundingClientRect();if(q.height>0)m=Math.max(m,q.bottom-r.top)});return m};"
+               "const split=" + SPLIT_JS + ";"
+               "const go=()=>{const bz=document.body.style.zoom;document.body.style.zoom='';"   # tier1115: 앱 보기 화면의 축소(zoom)를 잠깐 풀고 재야 PDF와 같은 쪽 나누기가 돼요
+               "for(let k=0;k<60;k++){const ps=[...document.querySelectorAll('.page')];const big=ps.map((s,i)=>[i,meas(s),s.classList.contains('flow')&&!s.classList.contains('lite')]).filter(x=>x[1]>(x[2]?LIM:SPL)).map(x=>x[0]);if(!big.length)break;split([big,LIM]);}"
+               "(" + TAIL_JS + ")([LIM]);"
+               "for(let k=0;k<4;k++){document.querySelectorAll('.page').forEach(s=>{const h=meas(s);if(h>LIM){const el=s.querySelector('.in');const z0=parseFloat(el.dataset.z||'1');const z=Math.max(ZMIN,Math.min(z0-0.02,z0*1040/h));el.dataset.z=z;el.style.zoom=z;}});}document.body.style.zoom=bz;};"
+               "(document.fonts?document.fonts.ready:Promise.resolve()).then(go);})();</script>")
+
+
+# tier1115: 흐름 쪽(.flow)은 한도에서 바로 나눠요. 기본 등급의 한 쪽짜리(.flow.lite)는 기존처럼 0.85까지 축소를 허용해요
+FLOW_JS = "[...document.querySelectorAll('.page')].map(s=>s.classList.contains('flow')&&!s.classList.contains('lite'))"
 
 
 async def render(src, out, fit=True):
     from playwright.async_api import async_playwright
     async with async_playwright() as p:
-        b = await p.chromium.launch(executable_path=os.environ.get("CHROME_PATH") or None, args=CHROME_ARGS)
+        b = await p.chromium.launch(executable_path=os.environ.get("CHROME_PATH") or None, args=["--no-sandbox"])
         pg = await b.new_page(viewport={"width": 794, "height": 1123})
         await pg.goto("file://" + src); await pg.wait_for_timeout(300)
         js = """[...document.querySelectorAll('.page')].map((s,i)=>{const r=s.getBoundingClientRect();let m=0;s.querySelectorAll('.in *').forEach(e=>{const q=e.getBoundingClientRect();if(q.height>0)m=Math.max(m,q.bottom-r.top)});return Math.round(m)})"""
         ov = await pg.evaluate(js)
-        for it in range(4):
-            bad = [i for i, h in enumerate(ov) if h > 1045]
+        if fit:  # sync1114: 크게 넘친 쪽(축소하면 0.9 아래)은 블록·표 행 단위로 다음 쪽에 이어 붙여요
+            # tier1115: 흐름 쪽(.flow)은 한도(LIMIT)에서 바로 나눠 축소 없이 꽉 채워요
+            flow = await pg.evaluate(FLOW_JS)
+            for _ in range(60):
+                big = [i for i, h in enumerate(ov) if h > (LIMIT if flow[i] else SPLIT_AT)]
+                if not big: break
+                await pg.evaluate(SPLIT_JS, [big, LIMIT])
+                ov = await pg.evaluate(js)
+                flow = await pg.evaluate(FLOW_JS)
+            if await pg.evaluate(TAIL_JS, [LIMIT]): ov = await pg.evaluate(js)
+        for it in range(8):   # 남은 넘침은 비율만큼 축소(하한 ZOOM_MIN)
+            bad = [(i, h) for i, h in enumerate(ov) if h > LIMIT]
             if not bad or not fit: break
-            await pg.evaluate("""(bad)=>{const ps=[...document.querySelectorAll('.page')];bad.forEach(i=>{const el=ps[i].querySelector('.in');const z=parseFloat(el.dataset.z||'1')-0.05;el.dataset.z=z;el.style.zoom=z;});}""", bad)
+            await pg.evaluate("""([bad,zmin])=>{const ps=[...document.querySelectorAll('.page')];bad.forEach(([i,h])=>{const el=ps[i].querySelector('.in');const z0=parseFloat(el.dataset.z||'1');const z=Math.max(zmin,Math.min(z0-0.02,z0*1040/h));el.dataset.z=z;el.style.zoom=z;});}""", [bad, ZOOM_MIN])
             ov = await pg.evaluate(js)
+        render.zooms = await pg.evaluate("""[...document.querySelectorAll('.page')].map(s=>{const e=s.querySelector('.in');return e?parseFloat(e.dataset.z||'1'):1})""")
         await pg.pdf(path=out, format="A4", print_background=True, prefer_css_page_size=True)
         await b.close()
         return ov
@@ -116,8 +263,19 @@ def main():
     ap.add_argument("--out", required=True); ap.add_argument("--now", help="기준일 YYYY-MM-DD (기본 오늘)")
     ap.add_argument("--previews", action="store_true", help="페이지별 PNG 미리보기도 저장")
     ap.add_argument("--keep-html", action="store_true")
+    ap.add_argument("--job", default="미정", choices=["직장인", "사업자", "사업가", "프리랜서", "주부", "학생", "무직", "미정"],
+                    help="직업 상황 (기본 미정 = 직장·사업 모두 읽히는 중립 문장)")
+    ap.add_argument("--time-rule", default="경도", choices=["경도", "30분"],
+                    help="시주 시각 보정: 경도(기본, 출생지 경도로 지방평균태양시) / 30분(흔한 만세력 관례, 표준시 −30분)")
+    ap.add_argument("--tier", choices=["free", "focus", "premium"], help="tier1115: 등급별 감정서 (free 기본 · focus 2,900원 주제 2개 · premium 9,900원 전체). 빼면 기존 종합 감정서")
+    ap.add_argument("--topics", help="focus 주제 2개: 돈,직업,사업,결혼,이사,궁합,건강,자녀 (영문 money,job,biz,love,move,gunghap,health,kids도 돼요)")
+    for k in ("name", "gender", "date", "time", "place"):
+        ap.add_argument(f"--partner-{k}", help="궁합 상대 " + k)
+    ap.add_argument("--partner-lunar", action="store_true"); ap.add_argument("--partner-leap", action="store_true")
     a = ap.parse_args()
     a.gender = {"f": "F", "m": "M", "여": "F", "남": "M"}.get(a.gender, a.gender)
+    if a.job == "사업가": a.job = "사업자"
+    if a.partner_gender: a.partner_gender = {"f": "F", "m": "M", "여": "F", "남": "M"}.get(a.partner_gender, a.partner_gender)
     t0 = time.time()
     now = datetime.fromisoformat(a.now) if a.now else datetime.now()
     doc, assets, rep, c = assemble(a, now)
@@ -138,8 +296,8 @@ def main():
         subprocess.run(["pdftoppm", "-r", "96", "-png", out, out[:-4] + "_p"], check=True)
     if not a.keep_html:
         pass
-    print(json.dumps({"pdf": out, "pages": len(ov), "page_heights": ov, "용신": c.yong, "희신": c.hee, "격국": c.gyeok,
-                      "강약": c.st_label, "years": {y: rep.ystar[y] for y in rep.years},
+    print(json.dumps({"pdf": out, "pages": len(ov), "page_heights": ov, "tier": a.tier, "topics": getattr(rep, "tier_topics", None), "용신": c.yong, "희신": c.hee, "격국": c.gyeok,
+                      "강약": c.st_label, "job": a.job, "years": {y: rep.ystar[y] for y in rep.years},
                       "sec_analysis": round(t1 - t0, 2), "sec_render": round(t2 - t1, 2), "sec_total": round(time.time() - t0, 2)}, ensure_ascii=False))
 
 

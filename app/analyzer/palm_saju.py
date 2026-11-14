@@ -107,13 +107,15 @@ def _palm_money(f, raw):
     return score, out, badges, band
 
 
-def money_section(f, reading, r=None, today=None):
+def money_section(f, reading, r=None, today=None, gen=None, job="미정"):
+    """gen(app1113) = report_api.gen_money(): 감정서 생성기의 용신·희신·기신, 대운 점수, 재물 정점, 10년 별점.
+    있으면 재물 정점·가까운 해를 생성기와 똑같이 고르고(기신·마이너스 대운 제외), 없으면 interpret.py 용신으로 거름."""
     today = today or date.today()
     pscore, palm, badges, band = _palm_money(f, None)
     sec = {"title": "재물운", "palm": palm, "badges": badges, "saju": [], "daeun": [], "seun": [], "peak": "", "advice": "",
            "has_saju": bool(r)}
     if not r:
-        stars = max(2, min(5, round(2 + pscore * 0.8)))
+        stars = max(1, min(5, round(2 + pscore * 0.8)))  # fix1113: ★2 하한 제거
         sec.update(stars=stars,
                    headline=(f"{badges[0]['label']}{_josa(badges[0]['label'])} 보이는 손이에요. " if badges else "") +
                    ("재운선이 살아 있어 돈복의 바탕이 있어요." if f.get("sun", {}).get("presence") in ("강함", "보통")
@@ -126,7 +128,11 @@ def money_section(f, reading, r=None, today=None):
     for k, v in r["ten_gods_count"].items():
         cnt[GROUP_OF[k]] += v
     strong = r["strength"]["support_ratio"] >= 0.5
-    ys = I.yongsin(r)
+    ys = dict(I.yongsin(r))
+    if gen:   # 용신·희신은 감정서와 같은 값으로
+        ys["용신_십신"], ys["희신_십신"] = gen.get("yong_g") or ys["용신_십신"], gen.get("hee_g") or ys["희신_십신"]
+        strong = bool(gen.get("strong"))
+    jae_gisin = (gen["jae_fav"] <= -2) if gen else (ys.get("labels", {}).get(I.el_of_group(r["day_master"]["element"], "재성"), "") == "기신")
     jae, sik = cnt["재성"], cnt["식상"]
     sscore = 0.0
     jae_el, sik_el = EL_KO[I.el_of_group(dm, "재성")], EL_KO[I.el_of_group(dm, "식상")]
@@ -168,6 +174,11 @@ def money_section(f, reading, r=None, today=None):
         hit = [x for x in (g1, g2) if x in MONEY]
         if not hit:
             continue
+        dg = (gen or {}).get("daeun", {}).get(a0)
+        if dg and dg["score"] < 0:      # app1113: 점수가 마이너스인 대운은 '재물 시기'로 올리지 않음
+            continue
+        if "재성" in (g1, g2) and jae_gisin and not (set((g1, g2)) & {"식상"} and (gen or {}).get("sik_fav", 0) > 0):
+            continue                    # 재성이 기신인 사주: 재성 대운은 돈보다 부담이 큰 시기
         why = []
         if "재성" in (g1, g2):
             why.append(f"{'천간' if g1 == '재성' else '지지'}에 재성({d['천간십신'] if g1 == '재성' else d['지지십신']})이 들어와 돈이 직접 움직이는 10년")
@@ -177,7 +188,7 @@ def money_section(f, reading, r=None, today=None):
         rows.append({"age": f"{a0}~{a1}세", "years": f"{d['시작연도(대략)']}~{d['시작연도(대략)'] + 9}년", "gz": d["ko"],
                      "tag": " · ".join(dict.fromkeys([t for t in (d["천간십신"], d["지지십신"]) if _g(t) in MONEY])),
                      "why": ", ".join(why), "palm_match": match, "now": a0 <= age <= a1, "past": a1 < age,
-                     "level": 2 if "재성" in (g1, g2) else 1})
+                     "level": 2 if "재성" in (g1, g2) else 1, "a0": a0, "star": dg["star"] if dg else None})
     sec["daeun"] = rows
 
     # 세운: 올해부터 10년 중 재성·식상 해
@@ -194,30 +205,54 @@ def money_section(f, reading, r=None, today=None):
                 else "일을 벌여 돈을 만드는 해")
         d = _daeun_at(r["daeun"], s["년"] - by)
         in_money_daeun = bool(d and (_g(d["천간십신"]) in MONEY or _g(d["지지십신"]) in MONEY))
+        st = (gen or {}).get("ystar", {}).get(s["년"])
+        if gen and (st is None or st < 4):
+            continue                    # app1113: 감정서 10년표 ★4 이상인 해만 '눈여겨볼 해'
+        if not gen and jae_gisin and g1 == "재성":
+            note = "돈이 움직이지만 지출·손실도 커지기 쉬운 해"
         sy.append({"year": s["년"], "age": s["년"] - by, "gz": s["ko"], "tag": f"{s['천간십신']}·{s['지지십신']}", "note": note,
-                   "level": lv + (1 if in_money_daeun else 0), "in_money_daeun": in_money_daeun})
+                   "level": lv + (1 if in_money_daeun else 0) + (st or 0), "in_money_daeun": in_money_daeun, "star": st})
     sec["seun"] = sy
 
     # 가장 좋은 시기 고르기: 손금 나이대와 겹치는 재성 대운 > 지금/다음 재성 대운
     fut = [x for x in rows if not x["past"]]
-    best = next((x for x in fut if x["palm_match"] and x["level"] == 2), None) or \
-        next((x for x in fut if x["level"] == 2), None) or (fut[0] if fut else None)
+    gpk = (gen or {}).get("peak")
+    if gen:   # app1113: 감정서 생성기의 재물 정점(best_daeun_money)과 같은 대운만
+        best = next((x for x in fut if gpk and x["a0"] == gpk["a0"]), None)
+        if gpk and not best:
+            best = {"age": f"{gpk['a0']}~{gpk['a1']}세", "years": f"{gpk['y0']}~{gpk['y1']}년", "gz": gpk["ko"], "palm_match":
+                    bool(b0 is not None and gpk["a0"] < b1 and gpk["a1"] >= b0), "now": gpk["a0"] <= age <= gpk["a1"], "past": False, "level": 1}
+    else:
+        best = next((x for x in fut if x["palm_match"] and x["level"] == 2), None) or \
+            next((x for x in fut if x["level"] == 2), None) or (fut[0] if fut else None)
     top_years = sorted(sy, key=lambda s: (-s["level"], s["year"]))[:2]
     peak = []
+    good_peak = bool(best) and (gpk["good"] if gpk else True)
     if best:
-        peak.append(f"{best['age']}({best['years']}) {best['gz']} 대운" + (" — 지금 이 대운 안에 있어요." if best["now"] else "이 가장 기대되는 재물 시기예요."))
+        if gen and not good_peak:
+            peak.append(f"재물 흐름이 상대적으로 가장 나은 시기는 {best['age']}({best['years']}) {best['gz']} 대운이에요. 크게 불어나기보다 고르게 쌓이는 흐름이라, 이때도 지출 관리가 먼저예요.")
+        else:
+            peak.append(f"{best['age']}({best['years']}) {best['gz']} 대운" + (" — 지금 이 대운 안에 있어요." if best["now"] else "이 가장 기대되는 재물 시기예요.") +
+                        (" 다만 좋은 때일수록 확장·투자 규모를 미리 정해 두세요." if gen else ""))
         if best["palm_match"]:
             peak.append(f"손금의 재운선 나이대({blabel})와 사주의 재물 대운이 겹쳐요. 이 시기가 돈이 들어오는 핵심 구간이에요.")
     if top_years:
         peak.append("가까운 해로는 " + ", ".join(f"{s['year']}년({s['age']}세, {s['note']})" for s in sorted(top_years, key=lambda s: s["year"])) + "을 눈여겨보세요.")
+    if gen and not best:
+        peak.insert(0, gen.get("no_peak") or "재물이 한꺼번에 크게 불어나는 정점 대운은 뚜렷하지 않아요.")
     sec["peak"] = " ".join(peak) if peak else "앞으로 10년 안에는 재성·식상이 크게 들어오는 해가 드물어요. 이런 시기엔 실력과 인맥을 쌓아 두는 것이 다음 재물운의 씨앗이에요."
+    sec["peak_none"] = bool(gen) and not best
     if blabel and not (best and best["palm_match"]):
         sec["palm_age"] = f"손금(재운선 시작점)이 가리키는 재물 나이대는 {blabel}예요."
     elif blabel:
         sec["palm_age"] = f"재운선 시작점 기준 재물 나이대: {blabel}"
 
+    if jae_gisin:          # app1113: 재성이 기신이면 재물 그릇 점수를 낮춰 냉정하게
+        sscore -= 0.8
+    if gen and not best:   # 생성기 기준 재물 정점이 없으면 조금 더 낮춤
+        sscore -= 0.3
     total = pscore + sscore
-    sec["stars"] = max(2, min(5, round(1.6 + total * 0.6)))
+    sec["stars"] = max(1, min(5, round(1.6 + total * 0.6)))  # fix1113: ★2 하한 제거
     head = []
     if badges:
         head.append(f"{badges[0]['label']}{_josa(badges[0]['label'])} 있는 손")
@@ -228,10 +263,15 @@ def money_section(f, reading, r=None, today=None):
     elif sik >= 1:
         head.append(f"사주에 식상 {sik}개")
     sec["headline"] = (", ".join(head) + "." if head else "재물은 운에서 들어오는 타입이에요.") + \
-        (f" 돈이 크게 움직이는 때는 {best['age']} {best['gz']} 대운이에요." if best else "")
+        ((f" 돈이 크게 움직이는 때는 {best['age']} {best['gz']} 대운이에요." if good_peak else
+          f" 재물 흐름이 상대적으로 나은 때는 {best['age']} {best['gz']} 대운이에요.") if best else
+         (" 재물이 한꺼번에 크게 불어나는 정점은 뚜렷하지 않아, 좋은 해마다 조금씩 쌓는 쪽이 맞아요." if gen else ""))
     tips = []
     if ys["용신_십신"] == "재성" or ys["희신_십신"] == "재성":
-        tips.append("재성 해에는 투자·이직·가격 인상 같은 '돈 결정'을 미루지 마세요.")
+        tips.append("재성 해에는 " + {"사업자": "가격 인상·신규 거래·계약", "프리랜서": "단가 인상·새 클라이언트", "주부": "저축·부업 시작",
+                                      "학생": "용돈 관리·아르바이트"}.get(job, "투자·연봉 협상·계약") + " 같은 '돈 결정'을 미루지 마세요. 다만 규모는 미리 정해 두세요.")
+    if jae_gisin:
+        tips.insert(0, "재성이 부담으로 작용하는 사주라, 돈 욕심이 커지는 해일수록 보증·동업·무리한 투자를 피하고 고정 지출부터 줄이세요.")
     if sik >= 1 or ys["용신_십신"] == "식상":
         tips.append("식상 해에는 새 일·부업·콘텐츠처럼 손으로 만드는 일을 벌이면 돈이 따라와요.")
     if not strong and jae >= 2:
@@ -242,7 +282,7 @@ def money_section(f, reading, r=None, today=None):
     return sec
 
 
-def combined_sections(f, reading, r=None, today=None):
+def combined_sections(f, reading, r=None, today=None, job="미정"):
     """재물운 다음에 이어지는 5개 풀이 (사업·운명 / 건강(생명선) / 생각(두뇌선) / 마음(감정선))."""
     today = today or date.today()
     out = []
@@ -265,7 +305,8 @@ def combined_sections(f, reading, r=None, today=None):
     if r:
         gw, gb = cnt["관성"], cnt["식상"] + cnt["재성"]
         if gw >= 2 and gw >= gb:
-            s["saju"].append(f"관성(직장·명예)이 {gw}개로 강해, 조직 안에서 자리를 높여 가는 '직장형' 사주예요.")
+            s["saju"].append(f"관성(직장·명예)이 {gw}개로 강해, 조직 안에서 자리를 높여 가는 '직장형' 사주예요." if job in ("직장인", "미정", "학생") else
+                             f"관성(책임·신용)이 {gw}개로 강해, 규칙과 신용으로 거래처·고객의 믿음을 쌓아 가는 사주예요. 계약·세무 같은 책임 일을 미루지 않는 것이 힘이에요.")
         elif gb >= 3:
             s["saju"].append(f"식상·재성이 합쳐 {gb}개라, 내 이름으로 일을 벌이는 '사업형' 기질이 강해요.")
         elif gw == 0:
@@ -277,7 +318,7 @@ def combined_sections(f, reading, r=None, today=None):
             d = _daeun_at(r["daeun"], 36)
             if d:
                 s["timing"].append(f"운명선이 두뇌선을 지나는 35~38세는 사주로 {d['ko']} 대운({d['천간십신']}·{d['지지십신']})이에요. "
-                                   + ("관성이 들어와 승진·직함이 생기는 흐름과 맞아요." if "관성" in _daeun_tag(d)
+                                   + (("관성이 들어와 승진·직함이 생기는 흐름과 맞아요." if job == "직장인" else "관성이 들어와 책임과 이름(신용·직함)이 커지는 흐름과 맞아요.") if "관성" in _daeun_tag(d)
                                       else "재성·식상이 들어와 일이 돈으로 연결되는 흐름이에요." if set(_daeun_tag(d)) & set(MONEY)
                                       else "인성·비겁 운이라 자격·실력을 쌓는 시기로 봐요."))
         if fate.get("end") == "토성구":
@@ -289,7 +330,8 @@ def combined_sections(f, reading, r=None, today=None):
             if a0 + 9 < today.year - by or a0 > today.year - by + 30:
                 continue
             if "관성" in _daeun_tag(d):
-                s["timing"].append(f"{a0}~{a0 + 9}세 {d['ko']} 대운에 관성이 들어와 직장운·명예운이 커져요.")
+                s["timing"].append(f"{a0}~{a0 + 9}세 {d['ko']} 대운에 관성이 들어와 " + ("직장운·명예운이 커져요." if job == "직장인" else
+                                   "거래처·관공서 일과 책임이 커져요. 신용을 쌓을 기회지만 계약·세무는 꼼꼼히 챙기세요." if job == "사업자" else "책임과 평판이 커져요. 맡을 일과 거절할 일을 나누세요."))
                 break
     out.append(s)
 
@@ -370,7 +412,7 @@ def combined_sections(f, reading, r=None, today=None):
     return out
 
 
-def advice(f, r, years, money=None):
+def advice(f, r, years, money=None, job="미정"):
     """올해·내년 조언: 사주 세운(해의 기운) + 손금 특징을 규칙으로 합침. years = saju_summary의 years 카드 2개."""
     f = f or {}
     pres = lambda k: (f.get(k) or {}).get("presence")
@@ -384,7 +426,7 @@ def advice(f, r, years, money=None):
         "식상": ("표현·기획의 기운이 강한 해라 " + ("사업선이 뚜렷한 손과 맞물려 부업·내 일을 시작하기 좋아요." if biz_ok
                  else "아이디어를 글·말·콘텐츠로 꺼내 두면 기회로 이어져요."),
                  "재주가 밖으로 드러나는 해예요. 만들어 둔 것을 알리고 값을 매기는 데 힘을 쓰세요."),
-        "관성": ("직장·명예의 기운이 들어와 " + ("운명선이 받쳐 주니 승진·이직 제안을 적극적으로 검토해 보세요." if fate_ok
+        "관성": (_GWAN_TIP.get(job, _GWAN_TIP["미정"])[0] + (_GWAN_TIP.get(job, _GWAN_TIP["미정"])[1] if fate_ok
                  else "책임 있는 자리를 맡되 무리한 약속은 줄이세요."),
                  "자리와 책임이 무거워지는 해예요. 맡은 일의 마감과 규칙을 지키는 것이 곧 평판이 돼요."),
         "인성": ("공부·자격의 기운이 있는 해라 자격증·배움에 쓴 시간이 다음 해의 돈이 돼요.",
@@ -397,10 +439,17 @@ def advice(f, r, years, money=None):
         yr = y.get("year"); sy = seun.get(yr) or {}
         gs = [g for g in (GROUP_OF.get(sy.get("천간십신")), GROUP_OF.get(sy.get("지지십신"))) if g]
         tips = []
+        weak = (y.get("star") or 3) <= 2
         for g in dict.fromkeys(gs):
+            if weak:   # app1113: ★2 이하 해에는 벌이는 조언 대신 지키는 조언 (같은 조언 반복 없이)
+                if g not in used: tips.append(_WEAK_TIP[g])
+                used.add(g); continue
             tips.append(TIP[g][1] if g in used else TIP[g][0]); used.add(g)
         if not tips:
             tips.append("큰 기운의 변화가 적은 해라 지금 하는 일을 꾸준히 다지는 것이 가장 좋아요.")
+        adv = [a for a in (y.get("adv") or []) if a.get("text")]
+        if adv:   # app1113: 감정서와 같은 조심(좋은 해)/보완(약한 해) 한 줄을 맨 앞에
+            tips.insert(0, f"{adv[0]['kind']} · {adv[0]['text']}")
         if i == 0 and life.get("clarity") == "약함":
             tips.append("생명선이 차분한 편이니 바쁜 달일수록 휴식부터 챙기세요.")
         elif i == 0 and life.get("clarity") in ("강함", "보통"):
@@ -412,7 +461,24 @@ def advice(f, r, years, money=None):
     return out
 
 
-def pairs(r, today=None):
+_WEAK_TIP = {   # app1113: 약한 해(★2 이하)의 십신별 '보완' 조언
+    "재성": "돈이 오가는 일은 많아도 남는 게 적기 쉬운 해예요. 새 투자보다 고정 지출을 줄이고 비상금부터 채우세요.",
+    "식상": "하고 싶은 일이 많아지는 해지만 벌이기보다 정리할 때예요. 새 일은 작게 시험만 해 보고, 말실수를 조심하세요.",
+    "관성": "책임과 압박이 커지는 해라 무리한 약속은 줄이고, 맡은 일을 문서로 정리해 두세요. 건강검진도 챙기세요.",
+    "인성": "생각이 많아 결정을 미루기 쉬운 해예요. 서류·계약은 꼼꼼히 보고, 할 일은 작게 나눠 바로 실행하세요.",
+    "비겁": "사람 때문에 돈이 새기 쉬운 해예요. 보증·동업·돈 빌려주기는 피하고 내 몫을 문서로 분명히 하세요.",
+}
+_GWAN_TIP = {   # app1113: 관성 해 문장을 직업 상황별로
+    "직장인": ("직장·명예의 기운이 들어와 ", "운명선이 받쳐 주니 승진·이직 제안을 신중하게 검토해 보세요."),
+    "사업자": ("거래처·관공서·계약상 책임의 기운이 들어와 ", "운명선이 받쳐 주니 큰 거래처·인허가 일을 정면으로 맡아 보되 계약서는 꼼꼼히 보세요."),
+    "프리랜서": ("클라이언트·평판의 기운이 들어와 ", "운명선이 받쳐 주니 큰 클라이언트 제안을 검토하되 일정·단가부터 못 박으세요."),
+    "주부": ("집안의 책임과 역할이 커지는 기운이라 ", "운명선이 받쳐 주니 맡은 역할을 분명히 나누면 인정이 따라요."),
+    "학생": ("시험·규칙·평가의 기운이 들어와 ", "운명선이 받쳐 주니 시험·자격 목표를 하나 정해 밀어붙이세요."),
+    "미정": ("일과 책임·평판의 기운이 들어와 ", "운명선이 받쳐 주니 책임 있는 자리나 큰 거래 제안을 신중하게 검토해 보세요."),
+}
+
+
+def pairs(r, today=None, job="미정"):
     """6대 선마다 함께 보는 사주 요소(무료 요약 칩). 규칙 기반·짧은 글자만."""
     if not r:
         return {}
@@ -429,7 +495,7 @@ def pairs(r, today=None):
     fem = str((r.get("input") or {}).get("gender", "")) in ("여", "F")
     return {
         "sun": [f"재성(재물) {cnt['재성']}개", f"식상(돈 버는 재주) {cnt['식상']}개", dz],
-        "business": [f"관성(직장·명예) {cnt['관성']}개", f"식상(내 일·표현) {cnt['식상']}개", dz],
+        "business": [f"관성({ {'사업자': '거래처·책임', '프리랜서': '클라이언트·평판', '주부': '역할·책임', '학생': '시험·평가', '직장인': '직장·명예'}.get(job, '일·책임') }) {cnt['관성']}개", f"식상(내 일·표현) {cnt['식상']}개", dz],
         "fate": [dz, f"관성 {cnt['관성']}개"],
         "life": [f"오행 많음 {EL_KO[hi]}({hi}) {el[hi]}", f"오행 적음 {EL_KO[lo]}({lo}) {el[lo]}"],
         "head": [f"일간 {dm['ko']}{EL_KO[dm['element']]}({dm['stem']})", f"인성(공부) {cnt['인성']}개", f"식상(표현) {cnt['식상']}개"],
@@ -437,8 +503,8 @@ def pairs(r, today=None):
     }
 
 
-def build(f, reading, r=None, today=None):
-    return {"money": money_section(f, reading, r, today), "sections": combined_sections(f, reading, r, today)}
+def build(f, reading, r=None, today=None, gen=None, job="미정"):
+    return {"money": money_section(f, reading, r, today, gen=gen, job=job), "sections": combined_sections(f, reading, r, today, job=job)}
 
 
 # ---------------------------------------------------------------- 양손 비교 (전통 방식, 남좌여우·성별 구분 없음)

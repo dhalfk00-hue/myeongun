@@ -404,3 +404,40 @@ body.noscroll{overflow:hidden}
 .advice .ah{display:flex;align-items:center;justify-content:space-between} .advice .ah .stars{margin:0}
 .advice .eb{font-size:11.5px;letter-spacing:.16em;color:var(--gold)} .advice .adv>b{display:block;font-family:var(--serif);font-weight:500;font-size:17px;margin:4px 0 2px}
 .advice .mo{display:flex;gap:8px;align-items:flex-start;margin:10px 0 0;font-size:13px;color:var(--sub)} .advice .mo svg{flex:none;width:15px;height:15px;color:var(--gold);margin-top:2px}
+/* app1113: 올해·내년 카드의 조심(좋은 해)·보완(약한 해) 한 줄 */
+ul.yadv{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:8px;text-align:left}
+ul.yadv li{font-size:13.5px;line-height:1.6;color:var(--ink2,#d9d2c2);background:rgba(214,185,124,.05);border:1px solid rgba(214,185,124,.16);border-radius:12px;padding:9px 12px}
+ul.yadv li b{display:inline-block;margin-right:7px;font-size:11.5px;font-weight:600;padding:1px 8px;border-radius:999px;vertical-align:1px}
+ul.yadv li b.ya-c{background:rgba(224,130,95,.18);color:#f2b8a0}
+ul.yadv li b.ya-s{background:rgba(120,170,224,.16);color:#aacdf0}
+
+/* nopalm1113: 손금 스위치(window.PALM_ENABLED, /flags.js). 켜지지 않으면 손금 요소는 숨김 */
+html:not(.palm-on) [data-palm]{display:none!important}
+html.palm-on [data-nopalm]{display:none!important}
+
+/* tier1115: 등급 고르기 · 주제 칩 · 시 경계 고르기 */
+.tiers{margin:18px 0}
+.tcard{border:1px solid var(--line2);border-radius:20px;padding:18px 16px;margin:12px 0;background:linear-gradient(180deg,#151826,#0d0f17)}
+.tcard.free{background:rgba(255,255,255,.02);border-color:var(--line)}
+.tcard.open{border-color:var(--gold)}
+.tcard .th{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.tcard .th b{font-family:var(--serif);font-size:17px;color:var(--ink)}
+.tcard .pr{font-size:15px;font-weight:600;color:var(--gold-hi);white-space:nowrap} .tcard .pr s{color:var(--mute);font-weight:400;font-size:12.5px;margin-right:4px}
+.tcard .ti{font-size:13px;color:var(--sub);line-height:1.6;margin:6px 0 12px}
+.tcard .btn[disabled]{opacity:.45;cursor:not-allowed}
+.tp-h{display:flex;justify-content:space-between;font-size:13px;color:var(--sub);margin:4px 2px 8px} .tp-h em{font-style:normal;color:var(--mute)} .tp-h em.ok{color:var(--gold-hi)}
+.topics{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px}
+.tp{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:1px solid var(--line);border-radius:14px;padding:10px 12px;background:rgba(255,255,255,.02);color:var(--ink);cursor:pointer;transition:all .2s}
+.tp b{font-size:15px} .tp small{font-size:11px;color:var(--mute);line-height:1.4}
+.tp.on{border-color:var(--gold);background:rgba(214,185,124,.12);box-shadow:0 0 0 1px var(--gold) inset} .tp.on b{color:var(--gold-hi)}
+.tp.dis{opacity:.4}
+.tp-partner{margin:0 0 10px} .lnk{background:none;border:0;color:var(--gold);text-decoration:underline;cursor:pointer;font-size:12.5px}
+.tcard .up{display:flex;gap:6px;font-size:12.5px;color:var(--gold-hi);background:rgba(214,185,124,.08);border-radius:10px;padding:8px 10px;margin:0 0 10px;line-height:1.5} .tcard .up svg{width:15px;height:15px;flex:none;margin-top:2px}
+.amt s{color:var(--mute);margin-right:6px}
+.hourpick .opts{display:grid;gap:8px}
+.hourpick .opt{display:flex;flex-direction:column;gap:4px;text-align:left;border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:rgba(255,255,255,.02);color:var(--ink);cursor:pointer}
+.hourpick .opt b{font-size:15px} .hourpick .opt span{font-size:12.5px;color:var(--sub);line-height:1.5}
+.hourpick .opt.on{border-color:var(--gold);background:rgba(214,185,124,.1)} .hourpick .opt .tag{font-size:10.5px;color:var(--gold);border:1px solid var(--line2);border-radius:99px;padding:0 7px;margin-left:4px}
+
+.amt b{white-space:nowrap}
+.sheet .amt{gap:14px} .sheet .amt span{text-align:right;line-height:1.5}

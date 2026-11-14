@@ -29,7 +29,7 @@
       <div class="row2"><label class="btn btn-gold">${ic("cam")}촬영하기<input type="file" accept="image/*" capture="environment" hidden></label>
         <label class="btn btn-line">${ic("img")}앨범에서<input type="file" accept="image/*" hidden></label></div>
       ${B ? `<button class="btn btn-ghost" id="pf-sajuonly" style="margin-top:8px">손금 없이 사주만 보기</button>` : `<label class="chk" style="margin-top:20px"><input type="checkbox" id="pf-use"${me ? " checked" : ""}> 내 사주와 함께 보기 <span class="mini">돈 들어오는 시기 · 감정서</span></label>
-      <div id="pf-bw"${me ? "" : " hidden"}>${birthForm("pf", { value: me || {} })}</div>`}
+      <div id="pf-bw"${me ? "" : " hidden"}>${birthForm("pf", { value: me || {}, job: true })}</div>`}
       <p class="privacy-note">${ic("shield")}<span>사진은 이 폰 안에서만 분석해요. 서버로 보내지도, 저장하지도 않아요.</span></p></div>`;
     if (B) { $("#pf-sajuonly", root).onclick = () => OPT.onSkip && OPT.onSkip(); $("#pf-bedit", root).onclick = () => OPT.onEdit && OPT.onEdit(); }
     else wireBirth(root, "pf");

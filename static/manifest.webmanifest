@@ -1,7 +1,7 @@
 {
-  "name": "손명리 · 사주×손금 교차 풀이 · 궁합",
+  "name": "손명리 - 사주 풀이·결혼 궁합",
   "short_name": "손명리",
-  "description": "사주와 손금을 함께 읽는 교차 풀이 · 2027 정미년 신년운세 · 결혼 궁합",
+  "description": "사주 풀이 · 2027 정미년 신년운세 · 결혼 궁합",
   "id": "/",
   "start_url": "/?src=app",
   "scope": "/",
@@ -11,15 +11,56 @@
   "dir": "ltr",
   "background_color": "#0b0d14",
   "theme_color": "#0b0d14",
-  "categories": ["lifestyle", "entertainment"],
+  "categories": [
+    "lifestyle",
+    "entertainment"
+  ],
   "icons": [
-    {"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
-    {"src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
-    {"src": "/static/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
-    {"src": "/static/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/static/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ],
   "shortcuts": [
-    {"name": "사주+손금", "url": "/#saju", "icons": [{"src": "/static/icons/icon-96.png", "sizes": "96x96"}]},
-    {"name": "궁합", "url": "/#gunghap", "icons": [{"src": "/static/icons/icon-96.png", "sizes": "96x96"}]}
+    {
+      "name": "사주",
+      "url": "/#saju",
+      "icons": [
+        {
+          "src": "/static/icons/icon-96.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "궁합",
+      "url": "/#gunghap",
+      "icons": [
+        {
+          "src": "/static/icons/icon-96.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
   ]
 }

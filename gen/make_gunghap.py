@@ -12,6 +12,7 @@ import build as B
 from build import esc, elsp, stars, ko, el_full
 from engine import STEM_ELK, BR_ELK
 from texts import *
+from josa import josa, particle, fix_josa
 from make_report import render, time_label
 import lunar as L
 
@@ -158,7 +159,7 @@ class Gunghap:
         self.both_good = [y for y in self.years if self.F.rep.ystar[y] >= 4 and self.M.rep.ystar[y] >= 4]
         self.both_bad = [y for y in self.years if self.F.rep.ystar[y] <= 2 and self.M.rep.ystar[y] <= 2]
         sH = max(2, min(10, 4 + 2 * len(self.both_love) + len(self.both_good) - len(self.both_bad)))
-        items.append(("결혼 시기 일치", 10, sH, f"둘 다 인연운이 강한 해 {', '.join(map(str, self.both_love)) or '없음'} · 둘 다 좋은 해 {', '.join(map(str, self.both_good)) or '없음'}"))
+        items.append(("함께하는 흐름", 10, sH, f"둘 다 관계 신호가 강한 해 {', '.join(map(str, self.both_love)) or '없음'} · 둘 다 좋은 해 {', '.join(map(str, self.both_good)) or '없음'}"))
         self.score_items = items
         self.total = sum(x[2] for x in items)
 
@@ -229,8 +230,9 @@ class Gunghap:
                     self.attraction_text()))
         out.append((f"조심할 자리: 배우자궁 {Fc.db}·{Mc.db}", self.palace_short()))
         b1 = best[0]
-        out.append((f"결혼 적기 1순위 {b1}년 {E.year_gz(b1)}",
-                    f"{F.who}: {self.love_reason(F, b1)} / {M.who}: {self.love_reason(M, b1)}. " + self.window_text() + f"그다음 후보는 {', '.join(map(str, best[1:3]))}년이에요."))
+        # tier1115: 결혼 '시기'는 말하지 않아요 → 두 사람의 관계 신호가 겹쳐 함께 큰 계획을 세우기 좋은 해
+        out.append((f"함께 큰 계획을 세우기 좋은 해: {b1}년 {E.year_gz(b1)}",
+                    f"{F.who}: {self.love_reason(F, b1)} / {M.who}: {self.love_reason(M, b1)}. 두 사람의 관계 신호가 함께 강해져 집·저축·생활 계획을 같이 세우기 좋은 해예요. " + self.window_text() + f"그다음으로 힘이 실리는 해는 {', '.join(map(str, best[1:3]))}년이에요."))
         bad = [x[1] for x in self.cautions()]
         out.append(("함께 지킬 해와 개운", f"{'·'.join(map(str, bad[:3])) + '년은 한 사람에게 충이 드는 해라, 이사·큰 지출을 몰지 말고 서로 받쳐 주세요. ' if bad else ''}함께 쓰면 좋은 기운은 <b>{ELEM[Fc.yong]['colors'].split('·')[0]}·{ELEM[Fc.hee]['colors'].split('·')[0]}, {ELEM[Fc.yong]['dir']}</b>{'' if Fc.yong == Mc.yong else ' / ' + ELEM[Mc.yong]['colors'].split('·')[0]}이에요."))
         return out
@@ -242,7 +244,7 @@ class Gunghap:
             if runs and y == runs[-1][-1] + 1: runs[-1].append(y)
             else: runs.append([y])
         rr = max(runs, key=len) if runs else []
-        return f"<b>{rr[0]}~{rr[-1]}년</b>이 두 사람의 인연 신호가 연달아 겹치는 ‘결혼의 창’이에요. " if len(rr) >= 2 else ""
+        return f"<b>{rr[0]}~{rr[-1]}년</b>은 두 사람의 관계 신호가 연달아 겹쳐 서로에게 마음을 쓰기 좋은 시기예요. " if len(rr) >= 2 else ""
 
     def attraction_text(self):
         F, M = self.F, self.M; Fc, Mc = F.c, M.c; s = []
@@ -332,7 +334,7 @@ class Gunghap:
  <div class="sub">8개 항목을 정해진 규칙으로 채점한 합계예요 · 같은 기준을 모든 커플에 똑같이 적용해요</div>
  <table><tr><th style="width:22%">항목</th><th style="width:13%">점수</th><th>근거</th></tr>{rows}
  <tr class="hl"><td><b>합계</b></td><td style="text-align:center"><b>{self.total} / 100</b></td><td class="small">85↑ 천생연분형 · 75↑ 아주 좋음 · 65↑ 좋음(노력하면 더 좋아짐) · 55↑ 보통 · 그 아래 노력 필요</td></tr></table>
- <p class="tiny" style="margin-top:1.4mm">채점 방법: 일간(천간합 15·상생 12·정관 13·비겁 11·충 6) · 용신 보완(상대 글자가 내 용신·기신에 주는 평균 호감도를 사람마다 10점으로 환산) · 배우자궁(기본 12, 육합 +8, 반합 +5, 충 −7, 형 −4, 원진 −3, 귀문 −2, 해 −2, 파 −1, 일지가 상대의 정재·정관이면 +2) · 천간 교차(기본 5, 합 +2.5, 충 −1.5, 한 기둥끼리 천간·지지가 모두 합하는 천지합 +2) · 지지 교차(같은 글자 쌍은 한 번만, 기본 5, 합 +1.5, 반합 +1, 가합 +0.5, 충 −1.5(충·형 겹치면 충만), 형 −1, 원진 −0.5) · 띠(기본 3, 합 +2, 충 −2, 형·원진 −1) · 배우자 별(상대 사주 속 내 배우자 오행의 양) · 시기(향후 10년 중 둘 다 인연운이 강한 해·좋은 해).</p>
+ <p class="tiny" style="margin-top:1.4mm">채점 방법: 일간(천간합 15·상생 12·정관 13·비겁 11·충 6) · 용신 보완(상대 글자가 내 용신·기신에 주는 평균 호감도를 사람마다 10점으로 환산) · 배우자궁(기본 12, 육합 +8, 반합 +5, 충 −7, 형 −4, 원진 −3, 귀문 −2, 해 −2, 파 −1, 일지가 상대의 정재·정관이면 +2) · 천간 교차(기본 5, 합 +2.5, 충 −1.5, 한 기둥끼리 천간·지지가 모두 합하는 천지합 +2) · 지지 교차(같은 글자 쌍은 한 번만, 기본 5, 합 +1.5, 반합 +1, 가합 +0.5, 충 −1.5(충·형 겹치면 충만), 형 −1, 원진 −0.5) · 띠(기본 3, 합 +2, 충 −2, 형·원진 −1) · 배우자 별(상대 사주 속 내 배우자 오행의 양) · 함께하는 흐름(향후 10년 중 둘 다 관계 신호가 강한 해·좋은 해).</p>
  <h3>일간 관계 · {Fc.dm}{EL_HAN[Fc.dm_el]} × {Mc.dm}{EL_HAN[Mc.dm_el]}</h3>
  {ilgan}
 </div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
@@ -389,7 +391,7 @@ class Gunghap:
  <ul class="small">{"".join(li)}</ul>
  <h3>{esc(F.who)}의 관성(남편 별) × {esc(M.who)}의 재성(아내 별)</h3>
  <p>{rel_txt}</p>
- <div class="box dark"><span class="gold">정리</span> · {self.attraction_text()} {self.palace_short().split('. ')[0]}.</div>
+ <div class="box dark"><span class="gold">정리</span> · {self.attraction_text()} {self.palace_short().split('. ')[0].rstrip('.')}.</div>
 </div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
 
     def stem_text(self):
@@ -494,21 +496,21 @@ class Gunghap:
         top3 = best[:3]
         for y in self.years:
             gz = E.year_gz(y)
-            tag = f"<b>결혼 적기 {top3.index(y) + 1}순위</b>" if y in top3 else ""
+            tag = f"<b>함께 계획하기 좋은 해 {top3.index(y) + 1}</b>" if y in top3 else ""
             yrows += (f'<tr{" class=hl" if y in top3 else ""}><td>{y}</td><td class="serif">{gz}</td><td class="small">{self.love_reason(F, y)}</td><td class="stars">{stars(F.rep.ystar[y])}</td>'
                       f'<td class="small">{self.love_reason(M, y)}</td><td class="stars">{stars(M.rep.ystar[y])}</td><td class="small">{tag}</td></tr>')
         return f'''<section class="page tight"><div class="in">
- <h2><span class="no">06</span>대운 흐름 비교 · 결혼 적기</h2>
- <div class="sub">10년 단위 인생의 계절을 5년씩 겹쳐 보고, 해마다 두 사람의 인연운을 교차했어요</div>
+ <h2><span class="no">06</span>대운 흐름 비교 · 함께 계획하기 좋은 해</h2>
+ <div class="sub">10년 단위 인생의 계절을 5년씩 겹쳐 보고, 해마다 두 사람의 관계 신호를 교차했어요 · 결혼 시기를 정하는 표가 아니에요</div>
  <table><tr><th style="width:12%">기간</th><th>{esc(F.who)} 대운</th><th>십신</th><th>운</th><th>{esc(M.who)} 대운</th><th>십신</th><th>운</th><th style="width:17%">함께 보면</th></tr>{rows}</table>
- <h3>해마다 인연운 교차 (향후 10년)</h3>
- <table><tr><th style="width:8%">연도</th><th style="width:8%">간지</th><th>{esc(F.who)} 인연 신호</th><th style="width:10%">운</th><th>{esc(M.who)} 인연 신호</th><th style="width:10%">운</th><th style="width:15%"></th></tr>{yrows}</table>
+ <h3>해마다 관계 신호 교차 (향후 10년)</h3>
+ <table><tr><th style="width:8%">연도</th><th style="width:8%">간지</th><th>{esc(F.who)} 관계 신호</th><th style="width:10%">운</th><th>{esc(M.who)} 관계 신호</th><th style="width:10%">운</th><th style="width:15%"></th></tr>{yrows}</table>
  <p class="small" style="margin-top:2mm">{self.timing_text(top3)}</p>
 </div><div class="foot">SONMYEONGRI · __PG__</div></section>'''
 
     def timing_text(self, top3):
         F, M = self.F, self.M; b = top3[0]; gz = E.year_gz(b)
-        s = f"<b>{b}년 {gz}</b>이 두 사람 모두에게 인연 신호가 겹치는 해예요({F.who}: {self.love_reason(F, b)} / {M.who}: {self.love_reason(M, b)}). "
+        s = f"<b>{b}년 {gz}</b>은 두 사람 모두에게 관계 신호가 겹쳐 함께 큰 계획을 세우기 좋은 해예요({F.who}: {self.love_reason(F, b)} / {M.who}: {self.love_reason(M, b)}). "
         s += f"그다음은 {top3[1]}·{top3[2]}년이에요. "
         win = [y for y in self.years if F.rep.love[y] + M.rep.love[y] >= 2.8]
         runs = []; 
@@ -516,12 +518,12 @@ class Gunghap:
             if runs and y == runs[-1][-1] + 1: runs[-1].append(y)
             else: runs.append([y])
         rr = max(runs, key=len) if runs else []
-        if len(rr) >= 2: s += f"<b>{rr[0]}~{rr[-1]}년</b>은 두 사람의 인연 신호가 연달아 겹치는 ‘결혼의 창’이에요. "
+        if len(rr) >= 2: s += f"<b>{rr[0]}~{rr[-1]}년</b>은 두 사람의 관계 신호가 연달아 겹쳐 서로에게 마음을 쓰기 좋은 시기예요. "
         lowp = [P for P in (F, M) if P.rep.ystar[b] <= 2]
-        for P in lowp: s += f"{P.who}는 {b}년 일·재물 운이 낮은 편이라, 결혼 자체는 좋되 큰 대출·투자는 피하고 예산을 넉넉히 잡으세요. "
+        for P in lowp: s += f"{P.who}는 {b}년 일·재물 운이 낮은 편이라, 함께 계획을 세우더라도 큰 대출·투자는 피하고 예산을 넉넉히 잡으세요. "
         mm = [m for m in E.month_pillars(b, b) if m[0].year == b]
         good = sorted(mm, key=lambda m: -(F.c.score(m[2])[0] + M.c.score(m[2])[0]))[:2]
-        s += "식 날짜는 그해 " + "·".join(f"{m[0].month}월({m[2]}, 절기 {m[0].month}/{m[0].day}~)" for m in sorted(good)) + "이 두 사람 모두 무난한 달이에요."
+        s += "그해 두 사람 모두 무난한 달은 " + "·".join(f"{m[0].month}월({m[2]}, 절기 {m[0].month}/{m[0].day}~)" for m in sorted(good)) + "이에요. 이사·큰 지출 같은 함께 정할 일을 이때로 잡으면 부딪힘이 적어요. 이 표는 관계의 흐름을 보는 참고이며, 결혼 시기를 정해 주지 않아요."
         return s
 
     def p_end(self):
@@ -534,7 +536,7 @@ class Gunghap:
                 "<li><b>돈 규칙</b>: 공동 통장 + 각자 용돈 통장, 큰 지출은 하루 생각하고 합의</li>",
                 f"<li><b>숫자</b>: {Y['nums']} · {H['nums']} (날짜·비밀번호·층수 고를 때 참고)</li>"]
         lim = [self.time_note_short, "궁합은 두 사람의 타고난 기운이 만나는 방식을 보는 것이지, 결혼의 성패를 정하지 않아요. 같은 궁합이라도 대화와 배려로 얼마든지 좋아져요.",
-               "점수는 정해진 규칙에 따른 계산값이라 참고용이에요."]
+               "점수는 정해진 규칙에 따른 계산값이라 참고용이에요.", "결혼 여부와 시기는 두 사람이 정할 일이라, 이 감정서는 결혼 시기를 예측하지 않아요."]
         return f'''<section class="page"><div class="in">
  <h2><span class="no">07</span>주의할 해 · 사이가 좋아지는 개운법</h2>
  <div class="sub">겁줄 일이 아니라 미리 알고 준비하면 되는 일이에요</div>
@@ -631,6 +633,7 @@ def assemble_gunghap(a, now):
     def pg(m):
         nonlocal n; n += 1; return str(n)
     html = re.sub("__PG__", pg, html)
+    html = fix_josa(html)
     for bad in ("\ubc31\uc6b4", "\ub3c4\uc0ac", "\ucca0\ud559\uc6d0", "\ube14\ub85c\uadf8"): assert bad not in html, bad
     css = open(os.path.join(HERE, "assets", "style.css")).read() + CSS_EXTRA
     doc = f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>손명리 결혼 궁합 감정서</title><link rel="stylesheet" href="style.css"></head><body>\n{html}\n</body></html>'

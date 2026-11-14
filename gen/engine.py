@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """손명리 감정서 분석 엔진: saju.py 결과 → 용신·격국·점수·월운·인연 시기 (규칙 기반, LLM 없음)."""
 import sys, argparse
+from functools import lru_cache
 from datetime import datetime, timedelta, date
 import os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import saju as S
 from lunar_python import Solar
+from texts import TG_GROUP as _TGG
 from texts import EL_KO, GEN, CTRL, GEN_BY, CTRL_BY, TG_GROUP, MONTH
 
 STEM_ELK = {s: EL_KO[e] for s, e in zip(S.STEMS, S.STEM_EL)}
@@ -69,18 +71,59 @@ class Chart:
         self.hidden_groups = hid
         self.gw = {k: self.wt[self.gel[k]] for k in GROUPS}
 
+    # 신강·신약: 위치 가중 + 지장간(통근) + 투간·뿌리 보정 (fix1113)
+    # 천간: 지지에 같은 오행 뿌리가 있으면 ×1.25, 뿌리 없이 떠 있으면 ×0.75
+    # 지지: 지장간 비율로 나눠 세고, 지장간이 천간에 투출(透干)했으면 그 몫 ×1.3
+    # 돕는 쪽(비겁·인성)은 2그룹, 빼는 쪽(식상·재성·관성)은 3그룹이라 그대로 세면 평균 사주가 신약으로 쏠려요.
+    # 돕는 쪽 ×1.25 보정으로 무작위 분포가 신약·중화·신강 약 39·23·38%가 되게 맞췄어요(tests/regress.py).
+    SUP_K = 1.25
+    MONTH_ADJ = {"비겁": 0.04, "인성": 0.02, "식상": -0.02, "재성": -0.03, "관성": -0.04}
+    BR_POS_W = {"년": 1.0, "월": 3.0, "일": 1.5, "시": 1.2}
+    ST_T1, ST_MID, ST_T2 = 0.40, 0.45, 0.50
+
     def _strength(self):
         st = self.r["strength"]
-        self.ratio = st["support_ratio"]
+        self.ratio_old = st["support_ratio"]
         self.deukryeong = st["득령(월지)"]
         self.deukji = st["득지(일지)"]
-        if self.ratio < 0.45:
+        sup_el = (self.gel["비겁"], self.gel["인성"])
+        vis = {n: p["gz"][0] for n, p in self.P.items()}
+        vis_el = {STEM_ELK[v] for n, v in vis.items() if n != "일"}
+        root_el = {STEM_ELK[h] for p in self.P.values() for h in S.HIDDEN[p["gz"][1]]}
+        sup = tot = 0.0
+        self.roots = []      # 일간을 돕는 지장간(통근) 위치
+        self.tougan = []     # 돕는 기운이 천간에 뜬 위치
+        for n, p in self.P.items():
+            if n != "일":
+                e = STEM_ELK[p["gz"][0]]
+                w = 1.0 * (1.25 if e in root_el else 0.75)
+                tot += w
+                if e in sup_el:
+                    sup += w
+                    if e in root_el: self.tougan.append(n)
+            bw = self.BR_POS_W.get(n, 1.0)
+            for h, hw in branch_hidden_w(p["gz"][1]):
+                e = STEM_ELK[h]
+                w = bw * hw * (1.3 if e in vis_el else 1.0)
+                tot += w
+                if e in sup_el:
+                    sup += w
+                    if n not in self.roots: self.roots.append(n)
+        dr = tot - sup
+        r0 = sup * self.SUP_K / (sup * self.SUP_K + dr) if tot else 0
+        # 월령(득령) 보정: 월지 정기가 일간에게 왕(비겁)·상(인성)·휴(식상)·수(재성)·사(관성)
+        mg = TG_GROUP[S.branch_ten_god(self.dm, self.mb)]
+        self.month_state = {"비겁": "왕", "인성": "상", "식상": "휴", "재성": "수", "관성": "사"}[mg]
+        r0 += self.MONTH_ADJ[mg]
+        self.ratio = round(max(0.0, min(1.0, r0)), 2)
+        if self.ratio < self.ST_T1:
             self.strong = False; self.st_label = "신약(身弱)"
-        elif self.ratio > 0.55:
+        elif self.ratio > self.ST_T2:
             self.strong = True; self.st_label = "신강(身强)"
         else:
-            self.strong = self.deukryeong
+            self.strong = self.ratio >= self.ST_MID if abs(self.ratio - self.ST_MID) > 0.01 else self.deukryeong
             self.st_label = "중화, 약간 신강" if self.strong else "중화, 약간 신약"
+        self.neutral = self.ST_T1 <= self.ratio <= self.ST_T2
 
     # ---------------------------------------------------------- 용신
     def _yongsin(self):
@@ -94,7 +137,11 @@ class Chart:
         drain = {k: w[G[k]] * (0.5 if (win and G[k] == "화") or (sum_ and G[k] == "수") else 1.0)
                  for k in ("식상", "재성", "관성")}
         self.drain = drain
-        if self.strong:
+        top0 = max(drain, key=drain.get)
+        # 중화인데 관성(살)이 가장 무거우면 인성으로 살을 풀어 쓰는 살인상생(殺印相生)으로 봐요 (fix1113)
+        self.salin = bool(self.strong and getattr(self, "neutral", False) and top0 == "관성")
+        self.weak_path = (not self.strong) or self.salin
+        if not self.weak_path:
             if yong is None:
                 method.append("억부")
                 yong = G["식상"] if w[G["비겁"]] >= w[G["인성"]] else G["재성"]
@@ -227,10 +274,35 @@ class Chart:
             sc += 0.5
         return round(sc, 2), rels
 
+    # 절대 기준 별점 (fix1113: ★1 허용, 하한 없음).
+    # 무작위 300명 대운·세운 점수 분포(평균≈0)의 10·30·70·90% 지점 → ★1~★5 ≈ 10·20·40·20·10%
+    STAR_CUTS = (3.3, 1.5, -1.3, -3.2)
+
     @staticmethod
     def stars(sc):
-        n = 5 if sc >= 2.3 else 4 if sc >= 0.9 else 3 if sc >= -0.6 else 2
-        return n
+        a, b, c_, d = Chart.STAR_CUTS
+        return 5 if sc >= a else 4 if sc >= b else 3 if sc >= c_ else 2 if sc >= d else 1
+
+    @staticmethod
+    def tone(sc):
+        """점수 3단계: good(★4 이상, ≥1.5) / mid(★3) / bad(★2 이하, <-1.3)"""
+        return "good" if sc >= Chart.STAR_CUTS[1] else "bad" if sc < Chart.STAR_CUTS[2] else "mid"
+
+    def daeun_score(self, p):
+        return self.score(p["gz"])[0]
+
+    def age_band_score(self, a0, a1):
+        """만 a0~a1세 구간을 덮는 대운 점수의 나이 가중 평균 (없으면 None)"""
+        tot = n = 0
+        for p in self.daeun_periods():
+            lo, hi = max(a0, p["a0"]), min(a1, p["a1"])
+            if hi >= lo:
+                k = hi - lo + 1; tot += k * self.daeun_score(p); n += k
+        return round(tot / n, 2) if n else None
+
+    def fifties_ok(self):
+        sc = self.age_band_score(50, 59)
+        return sc is not None and sc >= 0
 
     def tg(self, ch, is_branch=False):
         return S.branch_ten_god(self.dm, ch) if is_branch else S.ten_god(self.dm, ch)
@@ -278,7 +350,8 @@ _JIE = ["立春", "惊蛰", "清明", "立夏", "芒种", "小暑", "立秋", "�
 _ALIAS = {"LI_CHUN": "立春", "XIAO_HAN": "小寒", "DA_XUE": "大雪"}
 
 
-def jie_list(y0, y1):
+@lru_cache(maxsize=256)
+def _jie_list(y0, y1):
     seen = {}
     for y in range(y0 - 1, y1 + 2):
         t = Solar.fromYmd(y, 6, 1).getLunar().getJieQiTable()
@@ -287,24 +360,36 @@ def jie_list(y0, y1):
             if nm in _JIE:
                 dt = datetime(v.getYear(), v.getMonth(), v.getDay(), v.getHour(), v.getMinute()) + timedelta(hours=1)
                 seen[dt.strftime("%Y%m%d")] = (dt, nm)
-    return sorted(seen.values())
+    return tuple(sorted(seen.values()))
 
 
-def month_pillars(y0, y1):
-    """[(start_kst, end_kst, gz, jie_name)] covering y0-01 .. y1+1-02"""
+def jie_list(y0, y1):
+    """q1113: 계산 결과를 캐시해요(같은 해를 여러 번 물어도 한 번만 계산)."""
+    return list(_jie_list(y0, y1))
+
+
+@lru_cache(maxsize=64)
+def _month_pillars(y0, y1):
     js = jie_list(y0, y1)
     out = []
     for (a, n), (b, _) in zip(js, js[1:]):
         s = a + timedelta(hours=2)
         gz = Solar.fromYmdHms(s.year, s.month, s.day, s.hour, s.minute, 0).getLunar().getMonthInGanZhiExact()
         out.append((a, b, gz, n))
-    return out
+    return tuple(out)
 
 
+def month_pillars(y0, y1):
+    """[(start_kst, end_kst, gz, jie_name)] covering y0-01 .. y1+1-02"""
+    return list(_month_pillars(y0, y1))
+
+
+@lru_cache(maxsize=512)
 def year_gz(y):
     return Solar.fromYmd(y, 6, 1).getLunar().getYearInGanZhiExact()
 
 
+@lru_cache(maxsize=256)
 def lichun(y):
     for dt, n in jie_list(y, y):
         if n == "立春" and dt.year == y:

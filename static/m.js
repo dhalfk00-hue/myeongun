@@ -1,7 +1,15 @@
-/* 손명리 앱 화면 (사주 × 손금 교차 풀이 · 궁합). 외부 API·추적 없음. */
+/* 손명리 앱 화면 (사주 · 궁합, 손금은 PALM_ENABLED일 때만). 외부 API·추적 없음. tier1115: 기본·주제 심층·프리미엄 */
 (function () {
   "use strict";
   const $ = (s, el = document) => el.querySelector(s), $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  /* sync1114: 화면의 '내년(신년운세) 해'를 날짜로 계산 — 10~12월엔 다음 해, 그 밖엔 올해 */
+  const FY = (() => { const d = new Date(), y = d.getMonth() >= 9 ? d.getFullYear() + 1 : d.getFullYear();
+    const S = "甲乙丙丁戊己庚辛壬癸", Z = "子丑寅卯辰巳午未申酉戌亥", SK = "갑을병정무기경신임계", ZK = "자축인묘진사오미신유술해";
+    const COL = ["푸른", "푸른", "붉은", "붉은", "누런", "누런", "흰", "흰", "검은", "검은"], AN = ["쥐", "소", "호랑이", "토끼", "용", "뱀", "말", "양", "원숭이", "닭", "개", "돼지"];
+    const s = ((y - 4) % 10 + 10) % 10, b = ((y - 4) % 12 + 12) % 12;
+    return { y, gz: S[s] + Z[b], ko: SK[s] + ZK[b], br: Z[b], animal: COL[s] + " " + AN[b] }; })();
+  const fyFill = () => document.querySelectorAll("[data-fy]").forEach(e => { e.textContent = e.dataset.fy === "yg" ? `${FY.y} ${FY.gz}年` : String(FY.y); });
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fyFill); else fyFill();
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const stars = n => `<div class="stars" aria-label="5점 중 ${n}점">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= n ? "on" : ""}"></i>`).join("")}</div>`;
   const ic = (n, c = "i") => `<svg class="${c}"><use href="#i-${n}"/></svg>`;
@@ -26,7 +34,7 @@
   /* ---------- 라우팅 ---------- */
   const views = {};
   function go(v, push = true) {
-    if (v === "palm") v = "saju";   // 손금은 사주와 함께 보는 한 흐름(생년월일 → 손금 → 교차 풀이)
+    if (v === "palm") v = "saju";   // PALM 꺼져 있으면 #palm 주소도 사주로   // 손금은 사주와 함께 보는 한 흐름(생년월일 → 손금 → 교차 풀이)
     if (!["home", "saju", "gunghap"].includes(v)) v = "home";
     $$(".view").forEach(s => s.classList.toggle("on", s.id === "v-" + v));
     $$(".tabbar button").forEach(b => b.classList.toggle("on", b.dataset.go === v));
@@ -46,6 +54,7 @@
       : `<optgroup label="${r.region}">${r.places.map(p => `<option value="${p}"${p === sel ? " selected" : ""}>${p}</option>`).join("")}</optgroup>`).join("");
   }
   const segHTML = (id, items, cur) => `<div class="seg" data-seg="${id}">${items.map(([v, t]) => `<button type="button" data-v="${v}"${cur === v ? ' class="on"' : ""}>${t}</button>`).join("")}</div>`;
+  const JOBS = [["미정", "선택 안 함"], ["직장인", "직장인"], ["사업자", "사업가 · 자영업"], ["프리랜서", "프리랜서"], ["주부", "주부"], ["학생", "학생"], ["무직", "무직 · 쉬는 중 · 구직 중"]];   // tier1115
   function birthForm(p, o = {}) {
     const d = o.value || {};
     const [yy, mm, dd] = (d.date || "1990-01-01").split("-").map(Number);
@@ -73,6 +82,8 @@
       <p class="note" id="${p}-th"></p>
       <label class="lb" for="${p}-pl">태어난 곳 <span class="mini">시·군 경도로 시각을 보정해요</span></label>
       <select id="${p}-pl">${placeOpts(d.place || "서울")}</select>
+      ${o.job ? `<label class="lb" for="${p}-job">지금 하는 일 <span class="mini">선택 · 일·재물 풀이 문장을 맞춰요</span></label>
+      <select id="${p}-job">${JOBS.map(([j, t]) => `<option value="${j}"${j === (d.job === "사업가" ? "사업자" : d.job || "미정") ? " selected" : ""}>${t}</option>`).join("")}</select>` : ""}
     </div>`;
   }
   function wireBirth(root, p) {
@@ -102,6 +113,8 @@
     const b = { name: v("name").trim() || null, gender: $(`[data-seg="${p}-g"] .on`, f).dataset.v, calendar: cal,
       leap: cal === "lunar" && $(`#${p}-leap`, f).checked, date: `${v("y")}-${pad(v("m"))}-${pad(v("d"))}`,
       time: tm === "unknown" ? null : v("t1") || null, time2: tm === "range" ? v("t2") || null : null, place: v("pl") };
+    const jb = $(`#${p}-job`, f); if (jb) b.job = jb.value || "미정";
+    const prev = store.get(p === "s" ? "me" : "_none"); b.time_rule = prev && prev.date === b.date && prev.time === b.time && prev.place === b.place ? prev.time_rule || "경도" : "경도";
     if (tm !== "unknown" && !b.time) throw new Error("태어난 시각을 넣거나 '몰라요'를 눌러 주세요");
     if (tm === "range" && !b.time2) throw new Error("범위의 끝 시각도 넣어 주세요");
     return b;
@@ -235,38 +248,68 @@
   /* ---------- 사주 ---------- */
   views.saju = { init() { sajuForm(); } };
   const steps3 = cur => `<ol class="flow3 in">${["생년월일", "손바닥 사진", "사주 × 손금 풀이"].map((t, i) => `<li class="${i + 1 === cur ? "on" : i + 1 < cur ? "done" : ""}"><em>${i + 1 < cur ? "✓" : i + 1}</em>${t}</li>`).join("")}</ol>`;
+  const PALM = !!window.PALM_ENABLED;   // nopalm1113: 손금 스위치 (/flags.js)
   function sajuForm(err) {
     const el = $("#v-saju");
+    if (!PALM) {   // 출시판: 생년월일 → 바로 사주 풀이
+      el.innerHTML = `<div class="card rv"><div class="step">四柱 · 사주 풀이</div><div class="title">태어난 순간을 알려 주세요</div>
+      <p class="lead">생년월일과 태어난 시각으로 네 기둥을 세우고, 앞으로 10년과 올해·내년의 흐름을 <b class="gold">냉정하게</b> 짚어 드려요.</p>
+      ${birthForm("s", { value: store.get("me") || {}, job: true })}
+      <p class="err" id="s-err">${esc(err || "")}</p>
+      <button class="btn btn-gold" id="s-only" style="margin-top:18px">${ic("doc")}사주 풀이 보기</button>
+      <p class="note">${ic("shield")}<span>회원가입 없이 바로 봐요. 입력한 정보는 풀이에만 쓰고 24시간 뒤 서버에서 지워져요.</span></p></div>`;
+      wireBirth(el, "s");
+      $("#s-only", el).onclick = async () => { try { const b = readBirth(el, "s"); await hourPick(b); store.set("me", b); sajuOnly(b); } catch (e) { $("#s-err", el).textContent = e.message; } };
+      return;
+    }
     el.innerHTML = `<div class="card rv">${steps3(1)}<div class="step">四柱 × 手相 · 교차 풀이</div><div class="title">태어난 순간을 알려 주세요</div>
       <p class="lead">다음 단계에서 손바닥 사진 한 장을 찍으면, 사주와 손금을 <b class="gold">함께</b> 맞대어 풀어 드려요.</p>
-      ${birthForm("s", { value: store.get("me") || {} })}
+      ${birthForm("s", { value: store.get("me") || {}, job: true })}
       <p class="err" id="s-err">${esc(err || "")}</p>
       <button class="btn btn-gold" id="s-go" style="margin-top:18px">${ic("hand")}다음: 손금 보기</button>
       <button class="btn btn-ghost" id="s-only" style="margin-top:6px">손금 없이 사주만 보기</button>
       <p class="note">${ic("shield")}<span>회원가입 없이 바로 봐요. 입력한 정보는 풀이에만 쓰고 24시간 뒤 서버에서 지워져요. 손 사진은 폰 밖으로 나가지 않아요.</span></p></div>`;
     wireBirth(el, "s");
     const read = () => { try { const b = readBirth(el, "s"); store.set("me", b); return b; } catch (e) { $("#s-err", el).textContent = e.message; return null; } };
-    $("#s-go", el).onclick = () => { const b = read(); if (b) palmStep(b); };
-    $("#s-only", el).onclick = () => { const b = read(); if (b) sajuOnly(b); };
+    $("#s-go", el).onclick = async () => { const b = read(); if (b) { await hourPick(b); store.set("me", b); palmStep(b); } };
+    $("#s-only", el).onclick = async () => { const b = read(); if (b) { await hourPick(b); store.set("me", b); sajuOnly(b); } };
+  }
+  /* tier1115: 출생 시각이 시(時)의 경계 근처라 '경도 보정'과 '30분 관례'의 시주가 다르면 직접 고르게 해요 (기본: 경도) */
+  async function hourPick(b) {
+    if (!b.time) { b.time_rule = "경도"; return b; }
+    let r; try { r = await api("/api/v2/hour_check", b); } catch { return b; }
+    if (!r.differ) { b.time_rule = "경도"; return b; }
+    return new Promise(res => {
+      const bg = document.createElement("div"); bg.className = "sheet-bg";
+      const cur = b.time_rule || "경도";
+      bg.innerHTML = `<div class="sheet hourpick"><div class="grip"></div><div class="step">時 · 시주 확인</div><h3>태어난 시각이 두 시(時)의 경계에 있어요</h3>
+        <p class="mini" style="margin:0 0 12px">${esc(b.time)} 출생은 보정 방식에 따라 시주가 달라져요. 어느 쪽으로 볼지 골라 주세요. 모르면 기본(경도 보정)으로 두세요.</p>
+        <div class="opts">${r.options.map(o => `<button type="button" class="opt${o.rule === cur ? " on" : ""}" data-rule="${o.rule}"><b>${esc(o.title)}${o.default ? ' <span class="tag">기본</span>' : ""}</b><span>${esc(o.desc)}</span></button>`).join("")}</div>
+        <button class="btn btn-gold" id="hp-ok" style="margin-top:14px">이 기준으로 보기</button></div>`;
+      document.body.appendChild(bg);
+      $$(".opt", bg).forEach(x => x.onclick = () => $$(".opt", bg).forEach(y => y.classList.toggle("on", y === x)));
+      $("#hp-ok", bg).onclick = () => { b.time_rule = $(".opt.on", bg).dataset.rule; bg.remove(); res(b); };
+    });
   }
   function palmStep(b) {
     const el = $("#v-saju");
-    if (!window.PalmFlow) return sajuOnly(b);
+    if (!PALM || !window.PalmFlow) return sajuOnly(b);
     window.PalmFlow.init(el, { birth: b, steps: steps3, onSkip: () => sajuOnly(b), onEdit: () => sajuForm() });
     window.scrollTo({ top: 0 });
   }
   async function sajuOnly(b) {
     const el = $("#v-saju");
-    try { const d = await withLoading(el, ["만세력에서 네 기둥을 세우는 중", "다섯 기운의 균형을 재는 중", "2027 丁未년의 흐름을 읽는 중"], api("/api/v2/saju", { birth: b })); sajuResult(d, b); }
+    try { const d = await withLoading(el, ["만세력에서 네 기둥을 세우는 중", "다섯 기운의 균형을 재는 중", `${FY.y} ${FY.gz}년의 흐름을 읽는 중`], api("/api/v2/saju", { birth: b })); sajuResult(d, b); }
     catch (e) { sajuForm(e.message); }
   }
+  const advHTML = y => (y.adv || []).length ? `<ul class="yadv">${y.adv.map(a => `<li><b class="${a.kind === "조심" ? "ya-c" : "ya-s"}">${esc(a.kind)}</b>${a.text}</li>`).join("")}</ul>` : "";
   function yearCard(y, ny, i) {
     if (!ny) return `<div ${rv(i, "yearcard sm")}><div class="yy">${y.gz}<small>${y.year}</small></div><div class="eb">올해 · ${y.ko}년</div>
-      <h3>${esc(y.title)}</h3>${stars(y.star)}<p>${y.line}.</p>${y.months ? `<p>${y.months}</p>` : ""}</div>`;
+      <h3>${esc(y.title)}</h3>${stars(y.star)}<p>${y.line}.</p>${y.months ? `<p>${y.months}</p>` : ""}${advHTML(y)}</div>`;
     return `<div ${rv(i, "yearcard ny")}><div class="eb">신년운세 · ${y.year} ${y.gz}年</div>
-      ${gaugeHTML(y.star, "2027 운세 지수")}
+      ${gaugeHTML(y.star, `${y.year} 운세 지수`)}
       <h3>${esc(y.title)}</h3>${stars(y.star)}
-      <p>${y.line}.</p>${y.months ? `<div class="mo">${ic("cal")}<span>${y.months}</span></div>` : ""}</div>`;
+      <p>${y.line}.</p>${y.months ? `<div class="mo">${ic("cal")}<span>${y.months}</span></div>` : ""}${advHTML(y)}</div>`;
   }
   const keysHTML = (k3, i0, title = "한눈에 보는 핵심 3가지", sub = "") => `<div class="keys"><div ${rv(i0, "h3")}>${title}</div>${sub ? `<p class="mini">${sub}</p>` : ""}
     ${k3.map((k, i) => `<div ${rv(i0 + 1 + i, "key")}><span class="n gt">${String(i + 1).padStart(2, "0")}</span><b class="t">${k.title}</b><p>${k.text}</p></div>`).join("")}</div>`;
@@ -275,7 +318,7 @@
         ${badge ? `<div class="xbadge">${badge}</div>` : ""}<div class="step">四柱命式</div>
         <div class="who">${esc(d.who)} · ${d.gender === "F" ? "여성" : "남성"} · ${esc(d.place)} 출생</div>
         <div class="ilju"><b class="gt">${esc(ij)}</b><span><em>${esc(d.day_master.ch)} ${esc(d.day_master.ko)} 일간</em>${esc(d.day_master.img)}</span></div>
-        ${badge ? "" : `<div class="hl"><small>2027 丁未年 · 정미년</small><b>${esc(y1.title)}</b>${stars(y1.star)}</div>`}
+        ${badge ? "" : `<div class="hl"><small>${y1.year} ${esc(y1.gz)}年 · ${esc(y1.ko)}년</small><b>${esc(y1.title)}</b>${stars(y1.star)}</div>`}
         <div class="meta">${esc(d.date_label)}</div></div>`; };
   const pillarsCard = (d, i) => `<div ${rv(i, "card")}><div class="step">네 기둥 · 여덟 글자</div>
         ${pillarsHTML(d.pillars)}
@@ -290,22 +333,118 @@
     b = b || store.get("me");
     el.innerHTML = `
       ${sajuHero(d)}
-      <div ${rv(1, "card xcta")}><div class="step">手相 · 손금도 함께</div><h3>손금을 더하면 교차 풀이가 열려요</h3>
+      ${PALM ? `<div ${rv(1, "card xcta")}><div class="step">手相 · 손금도 함께</div><h3>손금을 더하면 교차 풀이가 열려요</h3>
         <p class="lead" style="font-size:14px">손바닥 사진 한 장이면 재운선 × 사주 재물운, 6대 선 × 대운까지 맞대어 봐 드려요. 사진은 폰 밖으로 나가지 않아요.</p>
-        <button class="btn btn-gold" id="s-addpalm" style="margin-top:14px">${ic("hand")}손금 더해서 함께 보기</button></div>
+        <button class="btn btn-gold" id="s-addpalm" style="margin-top:14px">${ic("hand")}손금 더해서 함께 보기</button></div>` : ""}
       ${pillarsCard(d, 2)}
       ${yearCard(y1, true, 3)}
       ${keysHTML(d.key3, 4)}
       ${fiveCard(d, 8)}
       ${yearCard(y0, false, 9)}
       ${decadeCard(d, 10)}
-      <div id="s-lock" class="rv" style="--i:11">${lockHTML(d)}</div>
+      <div id="s-tier" class="rv" style="--i:11"></div>
       <button class="btn btn-line" id="s-again">다른 생년월일로 보기</button>
       <p class="foot">전통 명리 해석에 기반한 재미·참고용 풀이예요. 중요한 결정은 전문가와 상의하세요.</p>`;
-    const rewire = () => { $("#s-lock", el).innerHTML = lockHTML(d); wireLock(el, d, rewire); };
-    wireLock(el, d, rewire);
+    tierUI($("#s-tier", el), d, b);
     $("#s-again", el).onclick = () => sajuForm();
-    $("#s-addpalm", el).onclick = () => b ? palmStep(b) : sajuForm();
+    if ($("#s-addpalm", el)) $("#s-addpalm", el).onclick = () => b ? palmStep(b) : sajuForm();
+  }
+
+  /* ---------- tier1115: 등급 · 주제 고르기 · 소유(사주별) ---------- */
+  const won = n => n.toLocaleString("ko-KR") + "원";
+  const ownsOf = chart => store.get("own_" + chart) || [];
+  const addOwn = (chart, t) => { const a = ownsOf(chart); if (t && !a.includes(t)) { a.push(t); store.set("own_" + chart, a); } };
+  const ownInfo = chart => { const a = ownsOf(chart).map(t => t.split(".")); return { premium: a.some(x => x[1] === "premium"),
+    focus: a.filter(x => x[1] === "focus").map(x => x[3]) }; };
+  const TOPICS = () => CONFIG.topics || [{ key: "money", ko: "돈" }, { key: "job", ko: "직업" }, { key: "biz", ko: "사업" }, { key: "love", ko: "결혼" },
+    { key: "move", ko: "이사" }, { key: "gunghap", ko: "궁합", partner: true }, { key: "health", ko: "건강" }, { key: "kids", ko: "자녀" }];
+  const TDESC = { money: "재물 그릇 · 돈이 모이는 해", job: "맞는 일 · 자리 이동", biz: "사업 체질 · 확장의 때", love: "애정 · 배우자 자리 (시기는 점치지 않아요)",
+    move: "이동수 · 좋은 방향 · 피할 방향", gunghap: "상대와의 궁합 · 상대 정보 필요", health: "약한 오행 · 관리 포인트", kids: "자녀의 별 · 자녀궁" };
+  const tkey = ks => [...ks].sort().join("+");
+  function tierUI(box, d, b) {
+    const T = CONFIG.tiers || {}, F = T.focus || { price: 2900, pages: "8~10쪽" }, Pm = T.premium || { price: 9900, pages: "약 20쪽" };
+    const st = box._st || (box._st = { sel: [], partner: store.get("partner") || null });
+    const own = ownInfo(d.chart), selKey = tkey(st.sel);
+    const focusOpen = own.premium || (st.sel.length === 2 && own.focus.includes(selKey));
+    const needP = st.sel.includes("gunghap");
+    const up = !own.premium && own.focus.length > 0;
+    box.innerHTML = `<div class="tiers">
+      <div class="sect"><b>감정서 고르기</b><span>REPORTS</span></div>
+      <div class="tcard free"><div class="th"><b>기본 감정서</b><span class="pr">무료</span></div>
+        <p class="ti">명식과 오행 · 타고난 성격 · 용신 한눈에 · 올해 운세 · ${esc((T.free || {}).pages || "2~3쪽")}</p>
+        <button class="btn btn-line sm" data-tier="free">${ic("doc")}기본 감정서 보기</button></div>
+      <div class="tcard focus${focusOpen ? " open" : ""}"><div class="th"><b>주제 심층 · 2개</b><span class="pr">${focusOpen ? "열림" : won(F.price)}</span></div>
+        <p class="ti">기본 감정서 + 고른 주제마다 타고난 바탕 · 대운 10년 · 해마다 조심/보완 · 힘이 실리는 해 · ${esc(F.pages)}</p>
+        <div class="tp-h"><span>주제를 <b>2개</b> 골라 주세요</span><em class="${st.sel.length === 2 ? "ok" : ""}">${st.sel.length} / 2</em></div>
+        <div class="topics">${TOPICS().map(t => { const on = st.sel.includes(t.key), dis = !on && st.sel.length >= 2;
+          return `<button type="button" class="tp${on ? " on" : ""}${dis ? " dis" : ""}" data-tp="${t.key}" aria-pressed="${on}"${dis ? ' aria-disabled="true"' : ""}><b>${esc(t.ko)}</b><small>${esc(TDESC[t.key] || "")}</small></button>`; }).join("")}</div>
+        ${needP ? `<div class="tp-partner">${st.partner ? `<p class="mini">${ic("check")}상대: ${esc(st.partner.name || "상대")} · ${st.partner.gender === "F" ? "여성" : "남성"} · ${esc(st.partner.date)} <button type="button" class="lnk" id="tp-pe">바꾸기</button></p>`
+          : `<button type="button" class="btn btn-line sm" id="tp-pe">${ic("pen")}궁합 상대 정보 넣기</button>`}</div>` : ""}
+        <p class="err" id="tp-err"></p>
+        <button class="btn ${focusOpen ? "btn-line" : "btn-gold"}" data-tier="focus"${st.sel.length === 2 && (!needP || st.partner) ? "" : " disabled"}>
+          ${focusOpen ? ic("doc") + "열림 · 주제 심층 보기" : st.sel.length === 2 ? ic("lock") + `${TOPICS().filter(t => st.sel.includes(t.key)).map(t => t.ko).join(" · ")} 심층 열기 · ${won(F.price)}` : "주제 2개를 고르면 열 수 있어요"}</button></div>
+      <div class="tcard premium${own.premium ? " open" : ""}"><div class="th"><b>프리미엄 · 전체 주제</b><span class="pr">${own.premium ? "열림" : up ? `<s>${won(Pm.price)}</s> 차액 ${won(Pm.price - F.price)}만` : won(Pm.price)}</span></div>
+        <p class="ti">돈·직업·사업·결혼·이사·건강·자녀 7개 주제 깊이 · 대운 × 주제 표 · 올해·내년 월별 · 개운법 · ${esc(Pm.pages)}${st.partner ? " · 넣어 둔 상대와의 궁합 포함" : ""}</p>
+        ${up ? `<p class="up">${ic("check")}<span>이 사주로 주제 심층을 이미 열었어요. <b>차액 ${won(Pm.price - F.price)}만</b> 내면 프리미엄으로 올라가요.</span></p>` : ""}
+        <button class="btn ${own.premium ? "btn-line" : "btn-gold"}" data-tier="premium">${own.premium ? ic("doc") + "열림 · 프리미엄 보기" : up ? ic("lock") + `차액 ${won(Pm.price - F.price)}만 내고 프리미엄 열기` : ic("lock") + `프리미엄 열기 · ${won(Pm.price)}`}</button></div>
+      <p class="mini center" style="margin:6px 0 0">한 번 결제한 감정서는 이 기기에서 같은 사주로 다시 열 수 있어요 · 결제는 개발 중(테스트 잠금 해제)</p></div>`;
+    $$("[data-tp]", box).forEach(x => x.onclick = () => { const k = x.dataset.tp, i = st.sel.indexOf(k);
+      if (i >= 0) st.sel.splice(i, 1); else if (st.sel.length < 2) st.sel.push(k); else { $("#tp-err", box).textContent = "주제는 2개까지 골라요. 먼저 하나를 빼 주세요"; return; }
+      tierUI(box, d, b); });
+    const pe = $("#tp-pe", box); if (pe) pe.onclick = () => partnerSheet(b, st.partner, p => { st.partner = p; store.set("partner", p); tierUI(box, d, b); });
+    $$("[data-tier]", box).forEach(x => x.onclick = () => openTier(box, d, b, x.dataset.tier, st));
+  }
+  function partnerSheet(me, cur, done) {
+    const bg = document.createElement("div"); bg.className = "sheet-bg";
+    bg.innerHTML = `<div class="sheet"><div class="grip"></div><div class="step">宮合 · 궁합 상대</div><h3>상대의 생년월일</h3>
+      ${birthForm("tq", { value: cur || {}, gender: me.gender === "F" ? "M" : "F", nameHint: "예) 이준호" })}
+      <p class="err" id="tq-err"></p><div style="display:grid;gap:8px;margin-top:12px"><button class="btn btn-gold" id="tq-ok">이 정보로 궁합 보기</button><button class="btn btn-ghost" id="tq-x">닫기</button></div></div>`;
+    document.body.appendChild(bg); wireBirth(bg, "tq");
+    $("#tq-x", bg).onclick = () => bg.remove();
+    $("#tq-ok", bg).onclick = () => { try { const p = readBirth(bg, "tq");
+      if (p.gender === me.gender) throw new Error("궁합은 남녀 두 사람 기준의 전통 이론이라, 상대의 성별을 확인해 주세요");
+      bg.remove(); done(p); } catch (e) { $("#tq-err", bg).textContent = e.message; } };
+  }
+  async function openTier(box, d, b, tier, st) {
+    const err = m => { const e = $("#tp-err", box); if (e) e.textContent = m; };
+    const btn = $(`[data-tier="${tier}"]`, box); const old = btn.innerHTML; btn.disabled = true; btn.innerHTML = "감정서를 만드는 중…";
+    try {
+      const body = { birth: b, tier, topics: tier === "focus" ? st.sel : [], owns: ownsOf(d.chart) };
+      if (st.partner && (tier === "premium" || st.sel.includes("gunghap"))) body.partner = st.partner;
+      const r = await api("/api/v2/tier", body);
+      const title = r.title + (r.topics_ko && r.topics_ko.length ? " · " + r.topics_ko.join("·") : "");
+      if (r.unlock) { store.set("u_" + r.rid, r.unlock); openViewer(r.rid, title); }
+      else tierBuy(r, title, () => tierUI(box, d, b));
+    } catch (e) { err(e.message); }
+    finally { if (btn.isConnected) { btn.disabled = false; btn.innerHTML = old; } }
+  }
+  function tierBuy(r, title, after) {
+    const o = r.offer, bg = document.createElement("div"); bg.className = "sheet-bg";
+    const isUp = o.id === "upgrade_7000";
+    bg.innerHTML = `<div class="sheet"><div class="grip"></div><div class="step">${isUp ? "UPGRADE · 차액 결제" : "REPORT"}</div><h3>${esc(title)}</h3>
+      <ul class="incl"><li>${ic("doc")}${esc(o.pages)} 감정서를 앱에서 바로 보기</li><li>${ic("dl")}PDF로 저장해 소장</li><li>${ic("shield")}광고 없음 · 회원가입 없음</li></ul>
+      <div class="amt"><b>${won(o.price)}</b><span>${isUp ? `<s>${won(o.full_price)}</s> 대신 차액 ${won(o.price)}만 · 이 사주의 주제 심층 구매가 확인됐어요` : "한 번 결제"}</span></div>
+      <div style="display:grid;gap:8px"><button class="btn btn-gold" id="tb-play">Google Play로 결제</button>
+        ${CONFIG.dev_unlock ? `<button class="btn btn-line" id="tb-dev">개발용 잠금 해제 (테스트 전용)</button>` : ""}<button class="btn btn-ghost" id="tb-x">닫기</button></div>
+      <p class="err" id="tb-err"></p></div>`;
+    document.body.appendChild(bg);
+    const close = () => bg.remove(), ok = res => { addOwn(res.chart || r.chart, res.own); store.set("u_" + r.rid, res.unlock); close(); after(); openViewer(r.rid, title); };
+    bg.onclick = e => { if (e.target === bg) close(); }; $("#tb-x", bg).onclick = close;
+    $("#tb-play", bg).onclick = async () => {
+      if (!("getDigitalGoodsService" in window)) { $("#tb-err", bg).textContent = "결제는 Play 스토어 앱에서 열려요. (지금은 준비 중이에요)"; return; }
+      try { ok(await playBuy(r.rid, o.id, ownsOf(r.chart))); } catch (e) { $("#tb-err", bg).textContent = e.message; }
+    };
+    $("#tb-dev", bg) && ($("#tb-dev", bg).onclick = async () => {
+      try { ok(await api("/api/v2/purchase", { rid: r.rid, product: o.id, token: "DEV-UNLOCK", owns: ownsOf(r.chart) })); } catch (e) { $("#tb-err", bg).textContent = e.message; }
+    });
+  }
+  async function playBuy(rid, sku, owns) {   // Digital Goods API + Payment Request (TWA). 서버 확인은 billing_todo_ko.md 참고
+    const svc = await window.getDigitalGoodsService("https://play.google.com/billing");
+    const [item] = await svc.getDetails([sku]); if (!item) throw new Error("상품 정보를 못 찾았어요");
+    const req = new PaymentRequest([{ supportedMethods: "https://play.google.com/billing", data: { sku } }], { total: { label: "합계", amount: { currency: item.price.currency, value: item.price.value } } });
+    const resp = await req.show(); let r;
+    try { r = await api("/api/v2/purchase", { rid, product: sku, token: resp.details.purchaseToken, owns }); } catch (e) { await resp.complete("fail"); throw e; }
+    await svc.consume(resp.details.purchaseToken); await resp.complete("success"); return r;
   }
 
   /* ---------- 궁합 ---------- */
@@ -313,7 +452,7 @@
   function ghForm(err) {
     const el = $("#v-gunghap"), me = store.get("me") || {}, pt = store.get("partner") || {};
     el.innerHTML = `<div class="card rv"><div class="step">宮合 · 결혼 궁합</div><div class="title">두 사람의 궁합</div>
-      <p class="lead">일간의 관계, 배우자 자리의 합·충, 서로 채워 주는 기운과 결혼 적기까지 봐요.</p><hr class="hr">
+      <p class="lead">일간의 관계, 배우자 자리의 합·충, 서로 채워 주는 기운과 함께 계획하기 좋은 해까지 봐요. 결혼 시기를 점치지는 않아요.</p><hr class="hr">
       ${birthForm("ga", { title: "나", tag: "본인", value: me })}<hr class="hr">
       ${birthForm("gb", { title: "상대", tag: "연인 · 배우자", value: pt, gender: me.gender === "F" ? "M" : "F", nameHint: "예) 이준호" })}
       <p class="err" id="g-err">${esc(err || "")}</p>
@@ -323,7 +462,7 @@
       let a, b; try { a = readBirth(el, "ga"); b = readBirth(el, "gb"); } catch (e) { $("#g-err", el).textContent = e.message; return; }
       if (a.gender === b.gender) { $("#g-err", el).textContent = "결혼 궁합은 남녀 한 분씩 넣어 주세요"; return; }
       store.set("me", a); store.set("partner", b);
-      try { ghResult(await withLoading(el, ["두 사람의 여덟 글자를 세우는 중", "일간과 배우자 자리를 맞대 보는 중", "결혼 적기를 찾는 중"], api("/api/v2/gunghap", { a, b }), "合")); }
+      try { ghResult(await withLoading(el, ["두 사람의 여덟 글자를 세우는 중", "일간과 배우자 자리를 맞대 보는 중", "두 사람의 10년 흐름을 겹쳐 보는 중"], api("/api/v2/gunghap", { a, b }), "合")); }
       catch (e) { ghForm(e.message); }
     };
   }
@@ -349,7 +488,7 @@
       ${keysHTML(d.key3, 2, "핵심 3가지")}
       <div ${rv(6, "card")}><div class="step">궁합 점수표</div><h3>무엇이 잘 맞을까</h3>
         <div class="items">${d.items.map(x => `<div><span>${esc(x.name)}</span><b>${x.score}<small> / ${x.max}</small></b><i><em style="width:${100 * x.score / x.max}%"></em></i></div>`).join("")}</div>
-        <hr class="hr"><div class="step">결혼 적기 후보</div>
+        <hr class="hr"><div class="step">함께 계획하기 좋은 해</div>
         <div class="yrs">${d.best_years.map(y => `<span><b>${y.year}</b>${y.gz}</span>`).join("")}</div></div>
       <div id="g-lock" class="rv" style="--i:7">${lockHTML(d)}</div>
       <button class="btn btn-line" id="g-again">다시 입력하기</button>
@@ -374,7 +513,7 @@
       <circle cx="${c}" cy="${c}" r="86" fill="none" stroke="rgba(214,185,124,.28)" stroke-width=".6"/>
       <g class="rot2">${ring(G, 75, 9.5, .35, 36)}</g>
       <circle cx="${c}" cy="${c}" r="64" fill="none" stroke="rgba(214,185,124,.35)" stroke-width=".6"/></svg>
-      <div class="core"><b class="gt">未</b><small>정미 · 붉은 양</small></div>`;
+      <div class="core"><b class="gt">${FY.br}</b><small>${FY.ko} · ${FY.animal}</small></div>`;
   }
 
   /* ---------- 시작 ---------- */

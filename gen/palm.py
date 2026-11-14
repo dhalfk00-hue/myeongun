@@ -18,7 +18,7 @@ LUCKY = {
  "솔로몬 링": "검지 아래를 감싸는 고리예요. 직감·이해력, 사람을 이끄는 힘이에요.",
  "태양구 별": "약지 아래의 별 문양이에요. 뜻밖의 큰 행운의 표식이에요.",
  "자수성가선": "생명선에서 위로 오르는 가지예요. 자격·실력으로 스스로 일어서요.",
- "개운선": "생명선에서 중지 쪽으로 짧게 오르는 가지예요. 그 나이에 문서·승진·결혼 같은 기회가 와요.",
+ "개운선": "생명선에서 중지 쪽으로 짧게 오르는 가지예요. 그 나이에 문서·승진·새 출발 같은 기회가 와요.",
  "인기선": "월구 아래의 2~3가닥 선이에요. 사람들의 인기를 얻어 일이 풀려요.",
  "직관선": "월구 가장자리에서 수성구로 휜 활 모양이에요. 직감과 통찰이 뛰어나요.",
  "막쥔손금": "두뇌선과 감정선이 한 줄로 합쳐졌어요. 강한 집중력과 추진력, 한번 정하면 끝까지 가는 손이에요.",
@@ -134,14 +134,15 @@ def _jaeun(fl, c):
            "from_plain": "손바닥 가운데에서 시작해 약지 쪽으로 오르는 선이 보여요.",
            "none": "약지 아래로 오르는 뚜렷한 세로선은 사진에서 확인되지 않았어요."}.get(st, "")
     mean = {"long": "길고 곧은 재운선은 <b>젊어서부터 재물과 인정이 따르는</b> 손이에요.",
-            "above_heart": "재운선이 감정선 위에서만 보이면 <b>50~55세 이후 재물과 복이 커지는 만년형</b>이에요.",
+            "above_heart": ("재운선이 감정선 위에서만 보이면 <b>50~55세 이후 재물과 복이 커지는 만년형</b>이에요." if c.fifties_ok() else
+                            "재운선이 감정선 위에서만 보이면 수상학에서는 50~55세 이후의 재물을 살피는 자리로 봐요. 다만 사주의 50대 대운이 받쳐 주지 않아, 이 시기는 <b>크게 늘리기보다 지키고 관리할 때</b> 복이 남아요."),
             "from_fate": "운명선에서 갈라진 재운선은 <b>하는 일을 바탕으로 꽃피고 승진·성과로 재물이 오는</b> 손이에요.",
             "from_head": "두뇌선에서 시작하는 재운선은 <b>재능과 아이디어가 돈이 되는</b> 손이에요.",
             "from_life": "생명선에서 시작하는 재운선은 <b>자수성가형 재물</b>이에요.",
             "from_moon": "월구에서 시작하는 재운선은 <b>대중의 인기로 버는</b> 손이에요(다소 기복은 있어요).",
             "from_mars": "제2화성구에서 시작하는 재운선은 <b>고비마다 후원자가 나타나는</b> 귀인선이에요.",
             "from_plain": "손바닥 가운데에서 시작하는 재운선은 <b>30세 이후 노력으로 성공하는</b> 손이에요.",
-            "none": "재운선이 옅다고 돈이 없다는 뜻은 아니에요. <b>운명선(일)과 사주의 재물 시기를 따라 버는</b> 형이에요."}.get(st, "")
+            "none": "약지 아래 재운선이 뚜렷하게 드러나지 않는 손이에요. 이런 손은 돈이 없다는 뜻이 아니라, <b>사주의 재물 시기를 따라 버는</b> 형이에요."}.get(st, "")
     if n >= 2 and st != "none":
         mean += " 가닥이 둘 이상이면 수입원이 여럿인 모양이라 본업 외 수입이 따라요."
     return tag, obs, mean, c.palm_cross("jaeun", st)
@@ -163,8 +164,8 @@ def _saup(fl, c):
 def _fate(fl, c):
     st = fl.get("state", "clear"); start = fl.get("start", "wrist"); end = fl.get("end", "heart"); br = fl.get("breaks", "none")
     if st == "none":
-        return ("보이지 않음", "중지 쪽으로 오르는 운명선은 사진에서 뚜렷하게 보이지 않아요.",
-                "운명선이 없으면 아직 진로를 고르는 중이라는 뜻이에요. <b>신념을 갖고 한 길을 가면 새로 생기는 선</b>이에요.", c.palm_cross("fate", "none"))
+        return ("뚜렷하지 않은 형", "중지 쪽으로 오르는 운명선은 사진에서 뚜렷하게 보이지 않아요.",
+                "운명선이 뚜렷하지 않은 형이에요. <b>자유롭게 자기 길을 만드는 형</b>으로, 정해진 길보다 스스로 진로를 열어 가요.", c.palm_cross("fate", "none"))
     S = {"wrist": ("손바닥 아래 중앙", "안정된 진로, 조직 안에서 꾸준히 올라가는 운"), "moon": ("월구", "창작·자유업·인기 직업으로 풀리는 운"),
          "life": ("생명선", "자격과 실력으로 스스로 일어서는 자수성가 운"), "venus": ("금성구", "가족의 영향·가업과 연결된 운"),
          "head": ("두뇌선", "35세 무렵부터 아이디어로 운이 트이는 대기만성"), "mars": ("제2화성구", "귀인의 도움으로 일이 풀리는 운"),
@@ -184,15 +185,20 @@ def _fate(fl, c):
 
 def _life(fl, c):
     ln = fl.get("length", "long"); v = fl.get("venus", "wide"); j = fl.get("joined_head", True)
+    start = fl.get("start", "fork")
     tag = ("긺" if ln == "long" else "짧은 편") + (" · 금성구를 넓게 감쌈" if v == "wide" else " · 금성구가 좁은 편")
-    obs = ("검지와 엄지 사이에서 " + ("두뇌선과 붙어 출발해" if j else "두뇌선과 떨어져 출발해") +
-           (" 엄지 아래 두툼한 곳(금성구)을 넓게 돌아" if v == "wide" else " 엄지 쪽으로 가깝게 돌아") +
-           (" 손목 가까이까지 내려가요." if ln == "long" else " 손바닥 중간쯤에서 옅어져요."))
-    mean = ("금성구를 넓게 감싸는 생명선은 <b>회복력과 끈기가 좋고 정이 많은 사람</b>이에요. " if v == "wide"
+    wrap = (" 엄지 아래 두툼한 곳(금성구)을 넓게 돌아" if v == "wide" else " 엄지 쪽으로 가깝게 돌아")
+    end = (" 손목 가까이까지 내려가요." if ln == "long" else " 손바닥 중간쯤에서 옅어져요.")
+    if start == "under_head":
+        obs = "두뇌선 바로 아래, 손바닥 가운데 근처에서 시작해" + wrap + end
+    else:
+        obs = ("검지와 엄지 사이에서 " + ("두뇌선과 붙어 출발해" if j else "두뇌선과 떨어져 출발해") + wrap + end)
+    mean = ("생명선이 넓게 호를 그리면 금성구가 크다는 뜻으로, <b>체력과 활력, 추진력이 좋은</b> 손이에요. " if v == "wide"
             else "금성구가 좁은 생명선은 <b>예민한 만큼 체력 관리가 중요한</b> 손이에요. ")
     mean += ("긴 생명선은 에너지가 풍부하고 끈기가 강해요. " if ln == "long" else "짧은 생명선은 수명이 아니라 에너지 관리가 필요하다는 뜻이고, 생활 습관에 따라 길어지기도 해요. ")
-    mean += ("두뇌선과 붙어서 시작하는 것은 가장 흔한 표준형으로, 신중하고 조심성 있는 기질이에요." if j
-             else "두뇌선과 떨어져 시작하면 독립심과 개척 정신, 사업 수완이 있어요.")
+    if start != "under_head":
+        mean += ("두뇌선과 붙어서 시작하는 것은 가장 흔한 표준형으로, 신중하고 조심성 있는 기질이에요." if j
+                 else "두뇌선과 떨어져 시작하면 독립심과 개척 정신, 사업 수완이 있어요.")
     if fl.get("double"): mean += " 안쪽에 이중 생명선이 있어 회복력이 아주 강해요."
     return tag, obs, mean, c.palm_cross("life", v)
 
@@ -254,7 +260,7 @@ def palm_html(spec, c, overlay_rel, start_no):
  <h2><span class="no">{start_no:02d}</span>손금 감정 ({hand} · 주로 쓰는 손)</h2>
  <div class="sub">전통 수상학 기준 · 재운선과 대박손금을 먼저 보고, 6대 선을 사주와 교차해 읽었어요 · 금색 선은 실제 주름을 따라 그렸어요</div>
  <div style="display:grid;grid-template-columns:80mm 1fr;gap:5mm;align-items:start">
-  <div><img class="palmimg" src="{overlay_rel}"><p class="tiny" style="margin-top:1.5mm">실선 = 사진에서 확인한 주름 · 점선 = 희미하거나 일부만 보이는 구간 · 점 = 유년법 나이 지점</p>
+  <div><img class="palmimg" src="{overlay_rel}"><p class="tiny" style="margin-top:1.5mm">실선 = 사진에서 확인한 주름 · 점선 = 희미하거나 일부만 보이는 구간{" · 점 = 유년법 나이 지점" if spec.get("ages") else ""}</p>
    <div class="box" style="margin-top:2mm"><b class="gold">대박손금</b><p class="small" style="margin:1mm 0 0">{lk}</p></div></div>
   <div>{item(items[0])}{item(items[1])}</div>
  </div>
@@ -267,7 +273,7 @@ def palm_html(spec, c, overlay_rel, start_no):
     if fl.get("fate", {}).get("state", "clear") != "none":
         tl.append(("운명선 × 두뇌선", "35~38세", f"{by + 35}~{by + 38}년", "진로의 분기점 · 판단을 신중히"))
         if fl.get("fate", {}).get("end", "heart") == "heart": tl.append(("운명선 × 감정선", "55세 전후", f"{by + 55}년 무렵", "일의 흐름이 전환되는 때"))
-    if fl.get("jaeun", {}).get("state") == "above_heart": tl.append(("재운선 (감정선 위)", "50~55세 이후", f"{by + 50}년~", "만년의 재물과 복"))
+    if fl.get("jaeun", {}).get("state") == "above_heart": tl.append(("재운선 (감정선 위)", "50~55세 이후", f"{by + 50}년~", "만년의 재물과 복" if c.fifties_ok() else "모은 재물을 지키고 관리하는 때"))
     timeline = ""
     if tl:
         timeline = '<h3>손금 유년법 타임라인</h3><table><tr><th style="width:28%">지점</th><th style="width:18%">나이</th><th style="width:20%">연도</th><th>의미</th></tr>' + "".join(f"<tr><td><b>{a}</b></td><td>{b}</td><td>{y}</td><td class=small>{m}</td></tr>" for a, b, y, m in tl) + "</table>"

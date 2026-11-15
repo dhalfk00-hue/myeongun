@@ -47,12 +47,16 @@ def free_core(rep, tier):
     st, bt = c.tg(gz[0]), c.tg(gz[1], True)
     import persona as PS, natal as NT
     fs_, fb_ = c.fav[E.STEM_ELK[gz[0]]], c.fav[E.BR_ELK[gz[1]]]
-    summ = (f"천간 {josa(PS.ST_KO[gz[0]], '은')} {st}({TG_THEME[st][0]})로 이 사주엔 {NT.ROLE[fs_]}, 지지 {josa(PS.BR_KO[gz[1]], '은')} {bt}({TG_THEME[bt][0]})로 {josa(NT.ROLE[fb_], '이에요')}. "
-            + TG_THEME[bt if abs(fb_) >= abs(fs_) else st][1].split(". ")[0].rstrip(".") + ".")
+    stY = rep.ystar[y]; dom = fb_ if abs(fb_) >= abs(fs_) else fs_
+    # verdict1116: 별이 판정을 정해요 — ★2 이하·안 맞는 기운이면 좋은 말 테마 문장은 빼고, 관계 문구도 별 방향에 맞춰 2개까지
+    summ = (f"천간 {josa(PS.ST_KO[gz[0]], '은')} {st}({TG_THEME[st][0]})로 이 사주엔 {NT.ROLE[fs_]}, 지지 {josa(PS.BR_KO[gz[1]], '은')} {bt}({TG_THEME[bt][0]})로 {josa(NT.ROLE[fb_], '이에요')}."
+            + (" " + TG_THEME[bt if abs(fb_) >= abs(fs_) else st][1].split(". ")[0].rstrip(".") + "." if dom >= 0 and stY >= 3 else ""))
     free = tier == "free"
-    ev = rep.year_events(gz)
-    lis = "".join(f"<li><b>{t}</b>: {d}</li>" for t, d in ev[:2 if free else 3]) or "<li>원국과 크게 부딪히거나 묶이는 글자가 없어 흐름이 순한 해예요.</li>"
-    advs = rep.yadv(y, "gen", 2) + rep.yadv(y, "money", 1)[:1] + ([] if free else rep.yadv(y, "health", 1)[:1])
+    ev = rep._ev_pick(rep.year_events(gz), stY)
+    if stY >= 4: ev = [(t_, B._no_but(d_)) for t_, d_ in ev]   # release1116
+    lis = "".join(f"<li><b>{t}</b>: {d}</li>" for t, d in ev[:2]) or "<li>원국과 크게 부딪히거나 묶이는 글자가 없어 흐름이 순한 해예요.</li>"
+    advs = rep.yadv(y, "gen", 2)
+    if stY >= 4: advs = [x for x in advs if x[0] != "조심"] or advs[:1]   # release1116: 좋은 해의 조심은 결론줄 한 번만
     steps, concl = rep.yongsin_parts()
     Y_, H_ = ELEM[c.yong], ELEM[c.hee]
     gaeun = f"{Y_['colors'].split('·')[0]}·{H_['colors'].split('·')[0]} 계열, {Y_['dir']}, 숫자 {Y_['nums']}"
@@ -74,10 +78,11 @@ def free_core(rep, tier):
  <div class="box dark"><span class="gold">결론</span> · {concl}<br><span class="gold">생활 속 개운</span> · {gaeun}</div>''')
     parts.append(f'''<h2><span class="no">{rep.nxt()}</span>{y} {B.ko(gz)}({gz})년: {rep.year_title(y)}</h2>
  <div class="sub">만 {c.age(y)}세 · 세운 {st}/{bt} · 운세 {B.stars(rep.ystar[y])}</div>
+ {rep.verdict_line(y)}
  <div class="box dark"><span class="gold">한 줄 요약</span> · {summ}</div>
  <ul class="small">{lis}</ul>
- <div class="advbox small"><b class="gold">{y}년 조심할 점 · 보완할 점</b><ul>{AV.fmt(advs)}</ul></div>
- <p class="small"><b>{y}년 좋은 달 · 조심할 달</b> · {rep.best_months_phrase(y, 1)}</p>
+ <div class="advbox small"><b class="gold">{y}년 {"할 일" if stY >= 4 else "할 일 · 조심 · 보완"}</b><ul>{AV.fmt(advs)}</ul></div>
+ <p class="small"><b>{y}년 안의 달별 차이</b> · {rep.best_months_phrase(y, 1)}</p>
  {left}''')
     if free: parts.append(more_box())
     return parts
@@ -163,7 +168,8 @@ def assemble_tier(args, now):
             fl.append(inner(rep.p_end(False)))
         pages.append(flow(fl, "flow lite" if tier == "free" else "flow"))
     else:
-        fl = [inner(rep.p_yongsin()), inner(rep.p_persona()), inner(rep.p_daeun()) + "\n" + T.daeun_matrix(topics)]
+        import gloss as GL   # gloss1116: 명식 다음 '사주 용어 쉽게 보기'(흐름 맨 앞 약 1쪽)
+        fl = [inner(rep.p_yongsin()), GL.guide_block(c, GL.guide_extra(c, rep.Y)), inner(rep.p_persona()), inner(rep.p_daeun()) + "\n" + T.daeun_matrix(topics)]
         for t in topics:
             if t == "gunghap":
                 sec, G = gunghap_section(rep, args, now)

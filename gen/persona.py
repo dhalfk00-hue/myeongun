@@ -234,7 +234,7 @@ DCTX = {
 # ------------------------------------------------------------------ 분석
 class P:
     """기간(세운·대운·월운) 하나를 이 사주 기준으로 분석한 결과"""
-    def __init__(self, c, gz, sc, scope="year", year=None):
+    def __init__(self, c, gz, sc, scope="year", year=None, tone=None):
         from engine import STEM_ELK, BR_ELK
         self.c, self.gz, self.sc, self.scope = c, gz, sc, scope
         s, b = gz
@@ -243,7 +243,7 @@ class P:
         self.fs, self.fb = c.fav[self.es], c.fav[self.eb]
         self.tg_s, self.tg_b = c.tg(s), c.tg(b, True)
         self.g_s, self.g_b = TG_GROUP[self.tg_s], TG_GROUP[self.tg_b]
-        self.tone = c.tone(sc)
+        self.tone = tone or c.tone(sc)   # verdict1116: 표에 보이는 별점이 있으면 그 별점으로 톤을 정해요
         # 주제 십신: 좋은 때는 지지(바탕), 아니면 더 부담인 쪽
         if self.tone == "good" or self.fb <= self.fs:
             self.tg, self.g, self.e, self.f = self.tg_b, self.g_b, self.eb, self.fb

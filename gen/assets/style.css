@@ -89,3 +89,12 @@ span.adv{display:block;margin-top:0.6mm;font-size:0.95em}
 .advbox{border-left:2.5px solid #c9a24a;padding:1mm 0 1mm 3mm;margin:2mm 0}
 .advbox ul{margin:0;padding-left:4mm}
 .sub.cont { margin:0 0 3mm; font-size:9.4pt; color:#a58a55; letter-spacing:0.08em; }
+/* verdict1116: 판정 꼬리표 */
+.adv-g{color:#1d5fa8;font-weight:700}
+.vd{display:inline-block;font-weight:700;font-size:.92em;padding:0 1.3mm;border-radius:1mm;color:#fff;line-height:1.45}
+.vd5,.vd4{background:#1f6b5c}.vd3{background:#8a7a4a}.vd2,.vd1{background:#a4461f}
+/* gloss1116: 명식표 한글 읽기 · 용어 쪽 */
+.mchart .big .rd { display:block; font-family:inherit; font-size:7.5pt; line-height:1.1; color:#6b5a3a; margin-top:0.6mm; letter-spacing:0; }
+.gtable td, .gtable th { padding:1.1mm 1.6mm; vertical-align:top; }
+.gtable td:first-child { white-space:nowrap; }
+.gtable { font-size:9pt; line-height:1.35; } .gtable td, .gtable th { padding:0.9mm 1.6mm; } .gtable td.tiny { color:#5a4c38; line-height:1.35; }

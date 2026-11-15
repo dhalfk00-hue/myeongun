@@ -115,7 +115,13 @@ _W = {
 
 
 def W():
-    return dict(_W.get(CUR["job"], _W["미정"]))
+    w = dict(_W.get(CUR["job"], _W["미정"]))
+    if _senior_mujik(): w.update(boss="가족·주변 어른", workplace="생활 자리")  # release1116: 60세+ 무직엔 '면접관' 대신
+    return w
+
+
+def _senior_mujik():
+    return CUR["job"] == "무직" and (CUR.get("age") or 0) >= 60
 
 
 def t(key):
@@ -505,8 +511,9 @@ def _walk(obj):
     return obj
 
 
-def apply(job=None):
+def apply(job=None, age=None):
     job = job or "미정"
+    if age is not None: CUR["age"] = age
     if job not in JOBS:
         raise ValueError(f"--job 은 {'|'.join(JOBS)} 중 하나여야 해요: {job}")
     _restore()
@@ -541,6 +548,13 @@ def apply(job=None):
         if job in d: A.ADV[g][area][k][i] = d[job]
     for (tg, k, i), d in _SHORT.items():
         if job in d: A.TG_SHORT_ADV[tg][k][i] = d[job]
+    if _senior_mujik():  # release1116: 60세+ 무직 — 면접·지원 대신 생활·가족 자리 말로
+        A.ADV["관성"]["gen"]["remedy"][1] = "가족·어른과의 일은 감정 대신 차분한 대화와 기록으로 풀어 가세요."
+        A.TG_SHORT_ADV["상관"][0][0] = "말실수·말다툼 주의"
+        for g, d in A.ADV.items():
+            for k, v in (d.get("job") or {}).items():
+                if isinstance(v, list): d["job"][k] = [x.replace("면접·소개 자리", "모임·소개 자리").replace("면접", "모임") for x in v]
+                elif isinstance(v, str): d["job"][k] = v.replace("면접·소개 자리", "모임·소개 자리").replace("면접", "모임")
     A.REL_ADV["충"]["월"] = t("rel_chung_wol")
     A.AREA_LABEL["job"] = t("area_job")
     if job in _REPL:

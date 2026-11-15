@@ -24,6 +24,25 @@ def tgj(c, gz):  # '식신/상관'
     return f"{c.tg(gz[0])}/{c.tg(gz[1], True)}"
 
 
+
+
+TG_SHORT_HI = {"겁재": "경쟁·추진", "상관": "표현·말솜씨"}   # release1116: ★4-5 달의 주제어
+
+
+def _no_but(d):
+    """'… 좋아요. 다만 …하세요.' → 앞 문장만 (좋은 해의 주의 말은 결론줄 '조심' 한 번으로 모아요)"""
+    i = d.find(" 다만 ")
+    if i < 0: i = d.find(". 다만")
+    return d[:i].rstrip(" .,") + "." if i > 20 else d
+
+def _hm_ko(t):
+    """josa1116: '12:15' → '12시 15분' (읽히는 대로 써야 조사도 맞아요)"""
+    try:
+        h, m = (int(x) for x in str(t).split(":")[:2])
+    except (TypeError, ValueError):
+        return t
+    return f"{h}시 {m}분" if m else f"{h}시"
+
 class Report:
     def __init__(self, c, name=None, inp=None, now=None):
         self.c = c; self.name = name; self.inp = inp or {}
@@ -119,11 +138,26 @@ class Report:
         if short: return [x[3] for x in out]
         return [(x[1], x[2]) for x in out]
 
+    POSW = ("좋은 제안", "귀인", "매력", "힘이 붙음", "가까운 관계", "새 계획", "협력")
+
+    def ev_star(self, ev, stn):
+        """verdict1116: 짧은 꼬리표도 별 방향에 맞춰요 — ★1~2엔 좋은 말 꼬리표를 빼고, ★4~5엔 나쁜 말 꼬리표를 1개까지만."""
+        if stn <= 2: return [e for e in ev if not any(w in e for w in self.POSW)]
+        if stn >= 4:
+            neg = [e for e in ev if not any(w in e for w in self.POSW)]
+            return [e for e in ev if any(w in e for w in self.POSW)] + neg[:1]
+        return ev
+
     def month_point(self, gz):
         c = self.c; s, b = gz
         st, bt = c.tg(s), c.tg(b, True)
         head = f"{TG_SHORT[st]}·{TG_SHORT[bt]}" if TG_SHORT[st] != TG_SHORT[bt] else TG_SHORT[st]
         ev = self.year_events(gz, short=True)[:3]
+        stn = self.star(c.score(gz)[0])
+        ev = self.ev_star(ev, stn)
+        if stn >= 4:   # release1116: ★4-5 달은 조심을 줄 끝 '조심' 한 번만 — 주제어·꼬리표의 주의 말은 빼요
+            head = "·".join(dict.fromkeys(TG_SHORT_HI.get(x, TG_SHORT[x]) for x in (st, bt)))
+            ev = [e for e in ev if any(w in e for w in self.POSW)]
         return head + (" · " + ", ".join(ev) if ev else "") + "."
 
     def year_title(self, y):
@@ -138,10 +172,10 @@ class Report:
 
     # ------------------------------------------------------------ fix1113b 조언
     def yadv(self, y, area="gen", n=2, lab=None):
-        gz = E.year_gz(y); return AV.period_advice(self.c, gz, self.ysc[y], area, key=str(y), max_items=n, scope="이 해는", lead=(area == "gen" or lab is not None), label=lab, kind="year", year=y)
+        gz = E.year_gz(y); return AV.period_advice(self.c, gz, self.ysc[y], area, key=str(y), max_items=n, scope="이 해는", lead=(area == "gen" or lab is not None), label=lab, kind="year", year=y, star=self.ystar.get(y))
 
     def yshort(self, y):
-        k, t = AV.short_advice(self.c, E.year_gz(y), self.ysc[y], "year", y); return k, t
+        k, t = AV.short_advice(self.c, E.year_gz(y), self.ysc[y], "year", y, star=self.ystar.get(y)); return k, t
 
     def cur_daeun_adv(self, area, n=1):
         c = self.c; p = c.current_daeun(self.Y)
@@ -152,7 +186,7 @@ class Report:
         c = self.c; gz = E.year_gz(y)
         st, bt = c.tg(gz[0]), c.tg(gz[1], True)
         a, b = TG_THEME[st][0], TG_THEME[bt][0]
-        ev = self.year_events(gz, short=True)[:2]
+        ev = self.ev_star(self.year_events(gz, short=True)[:3], self.ystar.get(y, 3))[:2]
         s = f"{josa(a, '과')} {b}의 해" if a != b else f"{a}의 해"
         return s + (" · " + ", ".join(ev) if ev else "")
 
@@ -186,6 +220,8 @@ class Report:
         for p in c.daeun_periods():
             if p["y1"] <= self.Y or p["a0"] > 65: continue
             sc0 = c.score(p["gz"])[0]
+            # verdict1116: 정점은 ★4 이상(good) 대운만, 그리고 천간·지지 어느 쪽도 기신이 아닐 때만
+            if c.tone(sc0) != "good" or c.fav[STEM_ELK[p["gz"][0]]] <= -2 or c.fav[BR_ELK[p["gz"][1]]] <= -2: continue
             # job1113: 0 언저리(★3 하단) 대운을 '정점'이라 부르지 않도록 문턱 0 → 0.5
             if sc0 < 0.5: continue
             # job1113: 세운 별점과 어긋나지 않게 — 이 대운 안에 드는 10년표 해 중 ★2 이하가 3해 이상이거나 평균이 ★3 미만이면 제외
@@ -207,8 +243,9 @@ class Report:
 
     def money_window(self):
         """job1113: 정점 대운이 없을 때 10년표에서 돈을 움직이기 좋은 해(★4 이상)를 이름으로 말해요."""
-        up = [y for y in self.years if self.ystar[y] >= 4][:3]
-        return (f" 10년 안에서는 {'·'.join(map(str, up))}년(★4 이상, {V.run_group(self, up)} 운)이 돈을 움직이기 가장 좋은 해예요" if up else "")
+        ms = self.tpx().ystars("money")[1]   # verdict1116: 돈 표의 별과 같은 기준
+        up = [y for y in self.years if ms[y] >= 4][:3]
+        return (f" 10년 안에서는 {'·'.join(map(str, up))}년(돈 ★4 이상, {V.run_group(self, up)} 운)이 돈을 움직이기 가장 좋은 해예요" if up else "")
 
     def no_peak(self):
         """NO_PEAK의 사람별 버전: 재물 구조와 용신 그룹을 한 문장에 묶어요."""
@@ -344,7 +381,7 @@ class Report:
         sc = sorted(ms, key=lambda m: -self.c.score(m[2])[0])
         good = sorted(sc[:2], key=lambda m: m[0]); bad = sorted(sc[-2:], key=lambda m: m[0])
         # q1113: 달마다 '왜 좋은지/왜 피하는지'(용신·기신 오행, 일지·월지 충)를 붙여요
-        return V.months_phrase(self.c, good, bad, style, y)
+        return V.months_phrase(self.c, good, bad, style, y, self.ystar.get(y, 3))
 
     def money_headline(self, palm):
         c = self.c; n = c.gcount["재성"]
@@ -410,7 +447,7 @@ class Report:
             conc = (f"기운이 넘치는 만큼 <b>{ {'식상': '재능으로 쓰고 표현할 때', '재성': '현실의 성과로 바꿀 때', '관성': '책임 있는 자리에서 쓸 때'}.get(yg_, '쓰고 나누고 표현할 때') }</b> 운이 열리는 사주라, 용신 {V.elw(c.yong)}의 해가 특히 반가워요." if c.strong else
                     f"혼자 모든 것을 짊어지면 지치지만, <b>{ {'비겁': '내 편과 동료가 받쳐 주면', '인성': '배움과 어른의 도움이 받쳐 주면'}.get(yg_, '배움과 내 편이 받쳐 주면') }</b> 크게 자라는 사주라, 용신 {V.elw(c.yong)}의 해가 특히 반가워요.")
         how = f"천간에 뜬 기운이 지지에 뿌리를 두었는지(통근·투간)와 태어난 달의 힘(월령 {c.month_state})까지 넣어 계산했어요. "
-        s1 += f"{how}결론은 {STEM[c.dm]['ko']} 일간 기준 <span class=\"em\">{c.st_label}</span>(도움 비율 {int(c.ratio * 100)}%, 40~50%는 중화)이에요. {conc}"
+        s1 += f"{how}결론은 {STEM[c.dm]['ko']} 일간 기준 <span class=\"em\">{c.st_label}</span>{particle(c.st_label, '이에요')}. 나를 돕는 기운의 비율이 {int(c.ratio * 100)}%예요(40~50%면 중화로 봐요). {conc}"
         return f'''<section class="page"><div class="in">
  <h2><span class="no">{self.nxt()}</span>명식(命式)과 오행</h2>
  <div class="sub">원국: 타고난 기운의 지도 · 만세력 계산(KASI 기준 음력·절기, 지방시 보정)</div>
@@ -451,11 +488,11 @@ class Report:
             bnd = min(abs(m - (h * 60)) for h in range(1, 25, 2)) if True else 0
             bnd = min(bnd, abs(m + 1440 - 23 * 60) if m < 60 else 999)
             hb = c.P["시"]["gz"][1]
-            s = f"{'' if jq.get('prev') else ''}출생 시각 {josa(inp.get('time'), '은')} {inp.get('place_label', '')} 경도 보정 시 <b>{lt}</b>{josa('(' + f"{tc['correction_minutes']:+.1f}분)", '로')} {hb}시예요."
+            s = f"{'' if jq.get('prev') else ''}출생 시각 {josa(_hm_ko(inp.get('time')), '은')} {inp.get('place_label', '')} 경도 보정{' (그해 서머타임 1시간 포함)' if str(tc.get('utc_offset_at_birth', '')).startswith('10') else ''} 시 <b>{lt}</b>{josa('(' + f"{tc['correction_minutes']:+.1f}분)", '로')} {hb}시예요."
             if bnd <= 12: s = s[:-len("예요.")] + f"인데, <b>시(時)의 경계에서 {bnd}분 거리</b>라 출생 시각이 조금만 달라도 시주가 바뀔 수 있어요."
             rule = inp.get("time_rule", "경도")
             if rule == "30분":
-                s = f"출생 시각 {josa(inp.get('time'), '은')} 흔한 만세력 방식(표준시에서 30분 보정)으로 <b>{lt}</b>, {hb}시예요."
+                s = f"출생 시각 {josa(_hm_ko(inp.get('time')), '은')} 흔한 만세력 방식(표준시에서 30분 보정)으로 <b>{lt}</b>, {hb}시예요."
                 if bnd <= 12: s = s[:-len("예요.")] + ("인데, <b>시(時)의 경계에 딱 걸린 시각</b>이에요." if bnd == 0 else f"인데, <b>시(時)의 경계에서 {bnd}분 거리</b>예요.")
                 pl = inp.get("place"); lon = S.PLACES.get(pl) if pl in S.PLACES else None
                 if lon is None:
@@ -830,20 +867,66 @@ class Report:
             rows += f'<tr{" class=hl" if stn >= hl_cut else ""}><td>{per}</td><td class="serif">{gz}</td><td class="small">{self.c.tg(gz[0])}/{self.c.tg(gz[1], True)}</td><td class="small">{pt}</td><td class="stars">{stars(stn)}</td></tr>'
         return rows
 
+    POSK = ("합", "귀인", "도화", "좋은", "반가운", "희신", "용신")
+    NEGK = ("충", "형", "원진", " 해 ", "파 ", "과다", "무거", "기신", "구신")
+
+    def _ev_pick(self, ev, st):
+        """verdict1116: 해 페이지 관계 문구를 별 방향에 맞춰 골라요(★1~2에 좋은 말만, ★4~5에 나쁜 말만 남지 않게), 최대 2개."""
+        out = []; neg_n = 0
+        for t, d in ev:
+            pos = any(k in t for k in self.POSK) and not any(k in t for k in ("충", "형", "원진"))
+            if st <= 2 and pos:
+                if "귀인" in t:   # 귀인은 보완 수단으로만
+                    d = d.split(" 가운데")[0].replace("자리로 귀인이 들어와", "자리에 귀인이 있어") + " 가운데 도움을 청할 사람이 있으니, 어려운 일은 혼자 버티지 말고 추천·소개로 풀어 가세요."
+                    out.append((t, d))
+                continue
+            if st >= 4 and not pos:
+                neg_n += 1
+                if neg_n > 0: continue   # 좋은 해의 주의점은 조언 칸 1개로 모아요
+            out.append((t, d))
+        return out[:2]
+
+    def tpx(self):
+        if not hasattr(self, "_tpx"):
+            import topics as TP
+            self._tpx = TP.Topics(self)
+        return self._tpx
+
+    VY = {5: "적극 움직이는 해", 4: "움직여도 좋은 해", 3: "균형을 잡는 해", 2: "보완하며 지키는 해", 1: "몸과 살림을 지키는 해"}
+
+    def verdict_line(self, y):
+        """verdict1116: 해마다 맨 위 한 줄 결론 — 별점이 정해요. 할 일 1 · 조심/안 할 일 1 · 이사·계약 판정."""
+        c = self.c; gz = E.year_gz(y); st = self.ystar[y]; tone = AV.star_tone(st)
+        p = PS.P(c, gz, self.ysc[y], "year", y, tone=tone); W = PS.words()
+        fc = "unf" if p.f <= -1 else "fav"; cau, rem = AV.SHORT2[p.g][fc]
+        do = AV.go_short(c, p, str(y)) if tone == "good" else PS.fill(PS.pick(rem, c, "vr" + str(y)), **W)
+        dont = PS.fill(PS.pick(cau, c, "vc" + str(y)), **W)
+        mst = self.tpx().ystars("move")[1][y]
+        mv = "해도 됨" if mst >= 4 else "신중" if mst == 3 else "미룸"
+        cst = self.tpx().ystars("money")[1][y]
+        cv = "해도 됨" if cst >= 4 else "신중" if cst == 3 else "미룸"
+        return (f'<div class="box small" style="margin:1.6mm 0"><b class="vd vd{st}">결론</b> <b>{self.VY[st]}</b> · <b class="adv-g">할 일</b> {do} · '
+                f'<b class="adv-c">조심</b> {dont} · <b>이사</b> {mv} · <b>계약</b> {cv}</div>')
+
     def year_page(self, y, months, cur=False):
         c = self.c; gz = E.year_gz(y)
         st, bt = c.tg(gz[0]), c.tg(gz[1], True)
-        ev = self.year_events(gz)
+        stY = self.ystar[y]
+        ev = self._ev_pick(self.year_events(gz), stY)
+        if stY >= 4: ev = [(t, _no_but(d)) for t, d in ev]   # release1116: 좋은 해의 조심은 맨 위 결론줄 한 번만
         dae = c.current_daeun(y)
         lc = E.lichun(y)
         fs_, fb_ = c.fav[STEM_ELK[gz[0]]], c.fav[BR_ELK[gz[1]]]
-        summ = (f"천간 {josa(PS.ST_KO[gz[0]], '은')} {st}({TG_THEME[st][0]})로 이 사주엔 {NT.ROLE[fs_]}, 지지 {josa(PS.BR_KO[gz[1]], '은')} {bt}({TG_THEME[bt][0]})로 {josa(NT.ROLE[fb_], '이에요')}. "
-                + TG_THEME[bt if abs(fb_) >= abs(fs_) else st][1].split(". ")[0].rstrip(".") + ".")
-        lis = "".join(f"<li><b>{t}</b>: {d}</li>" for t, d in ev[:4]) or "<li>원국과 크게 부딪히거나 묶이는 글자가 없어 흐름이 순한 해예요.</li>"
+        dom = fb_ if abs(fb_) >= abs(fs_) else fs_
+        theme = TG_THEME[bt if abs(fb_) >= abs(fs_) else st][1].split(". ")[0].rstrip(".") + "."
+        # verdict1116: 주된 기운이 이 사주에 맞지 않거나 ★2 이하면 좋은 말 한 줄(테마 문장)은 빼요
+        summ = (f"천간 {josa(PS.ST_KO[gz[0]], '은')} {st}({TG_THEME[st][0]})로 이 사주엔 {NT.ROLE[fs_]}, 지지 {josa(PS.BR_KO[gz[1]], '은')} {bt}({TG_THEME[bt][0]})로 {josa(NT.ROLE[fb_], '이에요')}."
+                + (" " + theme if dom >= 0 and stY >= 3 else ""))
+        lis = "".join(f"<li><b>{t}</b>: {d}</li>" for t, d in ev) or "<li>원국과 크게 부딪히거나 묶이는 글자가 없어 흐름이 순한 해예요.</li>"
         rows = self.month_rows(months, year_label=cur)
-        ys = self.ysc[y]
-        advs = self.yadv(y, "gen", 2) + self.yadv(y, "money", 1)[:1] + self.yadv(y, "health", 1)[:1] + self.yadv(y, "rel", 1)[:1]
-        advh = f'<div class="advbox small"><b class="gold">{y}년 조심할 점 · 보완할 점</b><ul>{AV.fmt(advs)}</ul></div>'
+        advs = self.yadv(y, "gen", 2)
+        if stY >= 4: advs = [x for x in advs if x[0] != "조심"] or advs[:1]   # release1116: 좋은 해의 조심은 결론줄 한 번만
+        advh = f'<div class="advbox small"><b class="gold">{y}년 {"할 일" if stY >= 4 else "할 일 · 조심 · 보완"}</b><ul>{AV.fmt(advs)}</ul></div>'
         if cur:
             mtitle = f"남은 {y}년 월별 운"; extra = self.tips_box(y, months) + self.preview_box(y)
         else:
@@ -852,6 +935,7 @@ class Report:
         return f'''<section class="page"><div class="in">
  <h2><span class="no">{self.nxt()}</span>{y} {ko(gz)}({gz})년: {self.year_title(y)}</h2>
  <div class="sub">만 {c.age(y)}세 · 세운 {st}/{bt} · 대운 {dae['gz'] if dae else '-'} · 입춘 {lc.strftime('%Y-%m-%d %H:%M')} (한국시간) · 운세 {stars(self.ystar[y])}</div>
+ {self.verdict_line(y)}
  <div class="box dark"><span class="gold">한 줄 요약</span> · {summ}</div>
  <ul class="small">{lis}</ul>
  {advh}
@@ -865,8 +949,8 @@ class Report:
         for yy in (y, y + 1, y + 2):
             gz = E.year_gz(yy)
             ak, at = self.yshort(yy)
-            rows += f'<tr{" class=hl" if self.ystar[yy] >= 4 else ""}><td><b>{yy}</b></td><td class="serif">{gz}</td><td class="small">{tgj(self.c, gz)}</td><td class="small">{self.year_line(yy)}.</td><td class="small"><b class="{"adv-c" if ak == "조심" else "adv-s"}">{ak}</b> {at}</td><td class="stars">{stars(self.ystar[yy])}</td></tr>'
-        return f'<h3>앞으로 3년 미리 보기</h3><table><tr><th style="width:8%">연도</th><th style="width:8%">간지</th><th style="width:12%">십신</th><th>흐름</th><th style="width:22%">조심 · 보완</th><th style="width:11%">운세</th></tr>{rows}</table>'
+            rows += f'<tr{" class=hl" if self.ystar[yy] >= 4 else ""}><td><b>{yy}</b></td><td class="serif">{gz}</td><td class="small">{tgj(self.c, gz)}</td><td class="small">{self.year_line(yy)}.</td><td class="small">{AV.vd(self.ystar[yy])} <b class="{AV.cls(ak)}">{ak}</b> {at}</td><td class="stars">{stars(self.ystar[yy])}</td></tr>'
+        return f'<h3>앞으로 3년 미리 보기</h3><table><tr><th style="width:8%">연도</th><th style="width:8%">간지</th><th style="width:12%">십신</th><th>흐름</th><th style="width:22%">할 일 · 조심/보완</th><th style="width:11%">운세</th></tr>{rows}</table>'
 
     def tips_box(self, y, months):
         if not months: return ""
@@ -895,16 +979,16 @@ class Report:
             tag = ""
             if y in top2: tag = f"<b>10년 중 상위 {sorted(top2).index(y) + 1}.</b> "
             ak, at = self.yshort(y)
-            rows += f'<tr{" class=hl" if s >= 4 else ""}><td>{"<b>%d</b>" % y if tag else y}</td><td>{c.age(y)}</td><td class="serif">{gz}</td><td class="small">{tgj(c, gz)}</td><td class="small">{tag}{line}.</td><td class="small"><b class="{"adv-c" if ak == "조심" else "adv-s"}">{ak}</b> {at}</td><td class="stars">{stars(s)}</td></tr>'
+            rows += f'<tr{" class=hl" if s >= 4 else ""}><td>{"<b>%d</b>" % y if tag else y}</td><td>{c.age(y)}</td><td class="serif">{gz}</td><td class="small">{tgj(c, gz)}</td><td class="small">{tag}{line}.</td><td class="small">{AV.vd(s)} <b class="{AV.cls(ak)}">{ak}</b> {at}</td><td class="stars">{stars(s)}</td></tr>'
         good = self.money_years(); bad = [y for y in self.years if self.ystar[y] <= 2]
         jj = c.r["ten_gods_count"].get("정재", 0); pj = c.r["ten_gods_count"].get("편재", 0)
         fit = "적금·청약·연금처럼 쌓이는 자산, 내 실력에 투자(자격·교육), 실거주 부동산" if (not c.strong or jj >= pj) else "사업·거래·투자처럼 움직이는 자산, 단 분산과 원칙 매매"
         ms_ = V.money_struct(c)
         avoid = JB.r(V.AVOID[ms_]) + (". 재다신약이라 감당 못 할 돈은 새요" if ((not c.strong and not c.neutral) and c.gcount['재성'] >= 2) else ". " + JB.r("동업은 반드시 서면으로") if c.strong else "")
         money = (f"<li><b>맞는 방식</b>: {fit}.</li><li><b>피할 방식</b>: {josa(avoid, '은')} 기신 {EL_WORD[c.gi]}의 해에 특히 멀리하세요.</li>"
-                 f"<li><b>좋은 시기</b>: {', '.join(map(str, good)) or ', '.join(map(str, sorted(top2)))}년({'·'.join(dict.fromkeys(V.run_group(self, [y]) for y in (good or sorted(top2))))} 운).</li>"
-                 f"<li><b>보수적으로</b>: {', '.join(map(str, bad)) or '특별히 나쁜 해는 없어요'}{'년(' + '·'.join(dict.fromkeys(V.run_group(self, [y]) for y in bad)) + ' 운)' if bad else ''}.</li>"
-                 f"<li><b class=\"adv-c\">조심</b>: {V.CAREFUL[ms_]}" + (", " + V.CONSERV[c.el_group[c.yong]] if bad else ", 목돈은 나눠서 들어가세요.") + "</li>")
+                 + (f"<li><b>좋은 시기</b>: {', '.join(map(str, good))}년({'·'.join(dict.fromkeys(V.run_group(self, [y]) for y in good))} 운).</li>" if good else "<li><b>좋은 시기</b>: 돈 쪽으로 ★4 이상인 해는 없어요. 큰돈은 꼭 필요한 것만 움직이세요.</li>")
+                 + f"<li><b>보수적으로</b>: {', '.join(map(str, bad)) or '특별히 나쁜 해는 없어요'}{'년(' + '·'.join(dict.fromkeys(V.run_group(self, [y]) for y in bad)) + ' 운)' if bad else ''}.</li>"
+                 + f"<li><b class=\"adv-c\">조심</b>: {V.CAREFUL[ms_]}" + (", " + V.CONSERV[c.el_group[c.yong]] if bad else ", 목돈은 나눠서 들어가세요.") + "</li>")
         phase = ""
         nm = {"up": "도약기", "mid": "준비·안정기", "down": "지키는 시기"}
         for cat, ys in self.runs():
@@ -1007,6 +1091,11 @@ class Report:
         cur_ms = [m for m in self.mp if m[1] > self.now and m[0].year <= self.Y + 1 and (m[0].year == self.Y or m[3] == "小寒")]
         if not cur_ms: return "다음 해 계획을 세우세요."
         g = max(cur_ms, key=lambda m: self.c.score(m[2])[0])
+        st = self.ystar.get(self.Y, 3)   # release1116: 올해 별에 맞춰 한쪽만 말해요
+        if st <= 2:
+            return f"남은 달은 새로 벌이기보다 정리하는 쪽으로 쓰고, 연말연시에는 {josa(V.gi_care(self.c), '을')} 줄이세요."
+        if st >= 4:
+            return f"{'내년 ' if g[0].year > self.Y else ''}{g[0].month}월({g[2]})은 {V.month_reason(self.c, g[2], True)}이라 남은 기회를 잡기 좋아요."
         return f"{'내년 ' if g[0].year > self.Y else ''}{g[0].month}월({g[2]})은 {V.month_reason(self.c, g[2], True)}이라 기회를 잡기 좋고, 연말연시에는 {josa(V.gi_care(self.c), '을')} 줄이세요."
 
     # ------------------------------------------------------------ 종합(손금)

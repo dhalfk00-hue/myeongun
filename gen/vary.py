@@ -49,12 +49,23 @@ def _join_months(items):
     return ", ".join(f"{josa(m, '은')} {r}" for m, r in items)
 
 
-def months_phrase(c, good, bad, style=0, y=None):
+def months_phrase(c, good, bad, style=0, y=None, star=3):
     # tier1115: 그해 운의 마지막 달(소한~입춘 전)은 다음 해 1월이라 '이듬해 1월'로 적어요
+    # release1116: 별이 판정을 정해요. ★1-2 해는 좋은 달 문구를 빼고 조심할 달만, ★4-5 해는 힘 쓸 달만 적어요(조심은 할 일 상자 하나로)
     ml = lambda m: ("이듬해 " if y is not None and m[0].year > y else "") + f"{m[0].month}월"
     G = [(f"{ml(m)}({m[2]})", month_reason(c, m[2], True)) for m in good]
     B = [(ml(m), month_reason(c, m[2], False)) for m in bad]
     g, b = _join_months(G), _join_months(B)
+    if star <= 2:
+        bm = "·".join(m for m, _ in B)
+        return [f"{b}이라 이 해 안에서도 특히 큰 결정은 미루는 게 좋아요. 다른 달도 넓히기보다 지키는 쪽으로 보세요.",
+                f"{b}이라 계약·지출을 특히 줄일 달이에요. 나머지 달도 크게 벌이기보다 정리하는 쪽이 맞아요.",
+                f"{bm}에는 특히 큰 결정을 피하세요({'·'.join(dict.fromkeys(r for _, r in B))}). 다른 달도 지키는 쪽으로 보세요."][style % 3]
+    if star >= 4:
+        gm = "·".join(m for m, _ in G)
+        return [f"{g}이라 이 해 안에서도 특히 힘을 실어 볼 만해요.",
+                f"{g}이라 중요한 일정을 이 달에 맞추면 좋아요.",
+                f"중요한 일은 {gm}에 잡으세요({'·'.join(dict.fromkeys(r for _, r in G))})."][style % 3]
     if style == 1:
         return f"{g}이라 움직이는 게 좋고, {b}이라 큰 결정은 미루는 게 좋아요."
     if style == 2:

@@ -12,7 +12,7 @@ import build as B
 from build import esc, elsp, stars, ko, el_full
 from engine import STEM_ELK, BR_ELK
 from texts import *
-from josa import josa, particle, fix_josa
+from josa import josa, particle, fix_josa, settle
 from make_report import render, time_label
 import lunar as L
 
@@ -81,8 +81,8 @@ class Gunghap:
         miss_f = [e for e in F.cnt if F.cnt[e] == 0 and M.cnt[e] > 0]
         miss_m = [e for e in M.cnt if M.cnt[e] == 0 and F.cnt[e] > 0]
         why = f"서로의 글자가 상대에게 주는 평균 호감도 {self.F.who} {fF:+.2f} · {self.M.who} {fM:+.2f}"
-        if miss_f: why += f" · {self.M.who}가 {self.F.who}에게 없는 {'·'.join(miss_f)}을 채워 줌"
-        if miss_m: why += f" · {self.F.who}가 {self.M.who}에게 없는 {'·'.join(miss_m)}을 채워 줌"
+        if miss_f: why += f" · {josa(self.M.who, '가')} {self.F.who}에게 없는 {'·'.join(miss_f)}을 채워 줌"
+        if miss_m: why += f" · {josa(self.F.who, '가')} {self.M.who}에게 없는 {'·'.join(miss_m)}을 채워 줌"
         items.append(("오행·용신 보완", 20, round(sB), why))
         # C 배우자궁 20
         r = rels(F.db, M.db)
@@ -197,7 +197,7 @@ class Gunghap:
         rr = S.pair_relations(gz[1], c.db)
         if any(t.startswith("육합") or t.startswith("삼합 반합") for t in rr): bits.append("배우자궁 합")
         if "충" in rr: bits.append("배우자궁 충")
-        return ", ".join(bits) or "-"
+        return ", ".join(bits) or "큰 신호 없음"
 
     # ------------------------------------------------------------ 페이지
     def p_cover(self):
@@ -224,17 +224,19 @@ class Gunghap:
         out = []
         a = self.score_items[0][3]
         out.append((f"일간 {Fc.dm}{EL_HAN[Fc.dm_el]} × {Mc.dm}{EL_HAN[Mc.dm_el]}: {a.split(':')[-1].split('·')[-1].strip()}",
-                    (STEM[Fc.dm]['img'] + "와 " + STEM[Mc.dm]['img'] + "의 만남이에요. ") + ("두 사람 모두 용신이 같은 " + el_full(Fc.yong) + "이라 좋아하는 환경과 쉬는 방식이 닮았어요." if Fc.yong == Mc.yong else f"{F.who}의 용신은 {el_full(Fc.yong)}, {M.who}의 용신은 {el_full(Mc.yong)}이에요.")))
+                    (f"{josa(F.who, '은')} {STEM[Fc.dm]['img']}, {josa(M.who, '은')} {josa(STEM[Mc.dm]['img'], '이에요')}. ") + ("두 사람 모두 용신이 같은 " + josa(el_full(Fc.yong), "이라") + " 좋아하는 환경과 쉬는 방식이 닮았어요." if Fc.yong == Mc.yong else f"{F.who}의 용신은 {el_full(Fc.yong)}, {M.who}의 용신은 {josa(el_full(Mc.yong), '이에요')}.")))
         sb = [x for x in self.stem_bits if "합" in x]
         out.append(("끌림의 표식: " + (", ".join(sb[:2]) if sb else "배우자 별 교환"),
                     self.attraction_text()))
         out.append((f"조심할 자리: 배우자궁 {Fc.db}·{Mc.db}", self.palace_short()))
         b1 = best[0]
+        _bad0 = {x[1] for x in self.cautions()}
+        nxt_ = sorted([y for y in best[1:] if y not in _bad0][:2])   # release1116: 조심할 해(충)와 겹치는 해는 '힘이 실리는 해'로 적지 않아요
         # tier1115: 결혼 '시기'는 말하지 않아요 → 두 사람의 관계 신호가 겹쳐 함께 큰 계획을 세우기 좋은 해
         out.append((f"함께 큰 계획을 세우기 좋은 해: {b1}년 {E.year_gz(b1)}",
-                    f"{F.who}: {self.love_reason(F, b1)} / {M.who}: {self.love_reason(M, b1)}. 두 사람의 관계 신호가 함께 강해져 집·저축·생활 계획을 같이 세우기 좋은 해예요. " + self.window_text() + f"그다음으로 힘이 실리는 해는 {', '.join(map(str, best[1:3]))}년이에요."))
+                    f"{F.who}: {self.love_reason(F, b1)} / {M.who}: {self.love_reason(M, b1)}. " + ("한 사람의 관계 신호가 뚜렷하고 두 사람의 운이 함께 받쳐 주어 집·저축·생활 계획을 같이 세우기 좋은 해예요. " if "큰 신호 없음" in (self.love_reason(F, b1), self.love_reason(M, b1)) else "두 사람의 관계 신호가 함께 강해져 집·저축·생활 계획을 같이 세우기 좋은 해예요. ") + self.window_text() + (f"그다음으로 힘이 실리는 해는 {', '.join(map(str, nxt_))}년이에요." if nxt_ else "")))
         bad = [x[1] for x in self.cautions()]
-        out.append(("함께 지킬 해와 개운", f"{'·'.join(map(str, bad[:3])) + '년은 한 사람에게 충이 드는 해라, 이사·큰 지출을 몰지 말고 서로 받쳐 주세요. ' if bad else ''}함께 쓰면 좋은 기운은 <b>{ELEM[Fc.yong]['colors'].split('·')[0]}·{ELEM[Fc.hee]['colors'].split('·')[0]}, {ELEM[Fc.yong]['dir']}</b>{'' if Fc.yong == Mc.yong else ' / ' + ELEM[Mc.yong]['colors'].split('·')[0]}이에요."))
+        out.append(("함께 지킬 해와 개운", f"{'·'.join(map(str, bad[:3])) + '년은 한 사람에게 충이 드는 해라, 이사·큰 지출을 몰지 말고 서로 받쳐 주세요. ' if bad else ''}함께 쓰면 좋은 색은 <b>{ELEM[Fc.yong]['colors'].split('·')[0]}·{ELEM[Fc.hee]['colors'].split('·')[0]}</b>, 방향은 <b>{ELEM[Fc.yong]['dir']}</b>이에요." + ('' if Fc.yong == Mc.yong else f" {M.who}에게는 {josa(ELEM[Mc.yong]['colors'].split('·')[0], '을')} 조금 더해 주면 좋아요.")))
         return out
 
     def window_text(self):
@@ -320,9 +322,14 @@ class Gunghap:
         fF, fM = self.fav_avgs
         same = Fc.yong == Mc.yong
         txt = (f"두 사람 모두 <b>용신 {el_full(Fc.yong)}·희신 {el_full(Fc.hee)}</b>로 같아요. 같은 것을 필요로 하는 사이라 취향·쉬는 방식이 잘 맞고, "
-               f"서로의 {EL_WORD[Fc.yong]}·{EL_WORD[Fc.hee]} 글자가 상대에게 힘이 돼요. 대신 둘 다 부족한 기운을 상대가 대신 채워 주지는 못하니, <b>함께 생활 속에서 채우는 것</b>(개운법)이 중요해요."
+               + (f"서로의 {EL_WORD[Fc.yong]}·{EL_WORD[Fc.hee]} 글자가 상대에게 힘이 돼요. 대신 둘 다 부족한 기운을 상대가 대신 채워 주지는 못하니, <b>함께 생활 속에서 채우는 것</b>(개운법)이 중요해요."
+                  if Fc.cnt[Fc.yong] + Mc.cnt[Fc.yong] > 0 else
+                  f"다만 두 사람 모두 {EL_WORD[Fc.yong]} 기운이 사주에 거의 없어 상대가 대신 채워 주지는 못해요. <b>함께 생활 속에서 채우는 것</b>(개운법)이 특히 중요해요.")
                if same else f"{self.F.who}의 용신 {el_full(Fc.yong)}은 {self.M.who} 사주에 {Mc.cnt[Fc.yong]}개, {self.M.who}의 용신 {el_full(Mc.yong)}은 {self.F.who} 사주에 {Fc.cnt[Mc.yong]}개 있어요.")
-        txt += f" 상대의 글자가 나에게 주는 평균 호감도는 {self.F.who} {fF:+.2f}, {self.M.who} {fM:+.2f}예요(−2 부담 ~ +2 큰 도움)."
+        txt += (f" 상대의 글자가 나에게 도움이 되는 정도(−2 부담 ~ +2 큰 도움)는 {self.F.who} {fF:+.2f}, {self.M.who} {fM:+.2f}예요."
+                + (" 둘 다 상대의 글자가 조금 부담이 되는 쪽이라, 생활 리듬과 쉬는 방식을 의식해서 맞춰 가야 해요." if fF < 0 and fM < 0 else
+                   " 두 사람 모두 상대의 글자에서 도움을 받는 쪽이에요." if fF > 0 and fM > 0 else
+                   " 한쪽은 도움을, 다른 한쪽은 부담을 더 느끼기 쉬워 부담이 큰 쪽의 쉬는 시간을 먼저 챙겨 주세요."))
         return f'<table><tr><th style="width:12%">오행</th><th style="width:30%">{esc(self.F.who)}</th><th style="width:30%">{esc(self.M.who)}</th><th>비고</th></tr>{rows}</table><p class="small" style="margin-top:2mm">{txt}</p>'
 
     def p_score(self):
@@ -341,7 +348,7 @@ class Gunghap:
 
     def ilgan_text(self):
         F, M = self.F, self.M; a, b = F.c.dm, M.c.dm
-        s = f"<p><b>{F.who}</b>은 {STEM[a]['img']}, <b>{M.who}</b>는 {STEM[b]['img']}예요. "
+        s = f"<p><b>{F.who}</b>{particle(F.who, '은')} {STEM[a]['img']}, <b>{M.who}</b>{particle(M.who, '는')} {josa(STEM[b]['img'], '이에요')}. "
         if {a, b} == {"甲", "乙"}:
             big, small = (F.who, M.who) if a == "甲" else (M.who, F.who)
             s += (f"같은 나무 기운이라 생각의 뿌리가 닮은 <b>친구 같은 부부</b>가 되기 쉬워요. 전통적으로 큰 나무(甲)에 덩굴(乙)이 감고 올라가는 모양을 <b>등라계갑(藤蘿繫甲)</b>이라 해서, "
@@ -349,7 +356,7 @@ class Gunghap:
                   f"<p class='small'>다만 둘 다 자존심이 있는 나무라, <b>누가 이끄느냐</b>를 두고 은근히 경쟁하기 쉬워요. 집안일·돈·계획마다 ‘담당’을 정해 두면 충돌이 확 줄어요.</p>")
         else:
             tg = S.ten_god(a, b); tg2 = S.ten_god(b, a)
-            s += f"{F.who} 입장에서 {M.who}는 {tg}, {M.who} 입장에서 {F.who}는 {tg2}예요. {TG_THEME[tg][1]}</p>"
+            s += f"{F.who} 입장에서 {josa(M.who, '는')} {tg}, {M.who} 입장에서 {josa(F.who, '는')} {josa(tg2, '이에요')}. {TG_THEME[tg][1]}</p>"
         return s
 
     def p_palace(self):
@@ -634,6 +641,8 @@ def assemble_gunghap(a, now):
         nonlocal n; n += 1; return str(n)
     html = re.sub("__PG__", pg, html)
     html = fix_josa(html)
+    import gloss as GL   # gloss1116: 사주 용어 쉬운 풀이
+    html = settle(fix_josa(GL.apply(html)))   # josa1116: 풀이가 들어간 뒤 마지막 조사 맞춤
     for bad in ("\ubc31\uc6b4", "\ub3c4\uc0ac", "\ucca0\ud559\uc6d0", "\ube14\ub85c\uadf8"): assert bad not in html, bad
     css = open(os.path.join(HERE, "assets", "style.css")).read() + CSS_EXTRA
     doc = f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=800, initial-scale=1"><style>html{{-webkit-text-size-adjust:100%;text-size-adjust:100%}}</style><title>손명리 결혼 궁합 감정서</title><link rel="stylesheet" href="style.css"></head><body>\n{html}\n</body></html>'

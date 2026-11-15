@@ -75,6 +75,8 @@ def last_hangul(word):
     s = _TRAIL.sub("", s)
     if not s:
         return "가"
+    if re.search(r"\d{1,2}:\d{2}$", s):   # josa1116: 시각 12:15 → '분'으로 읽어요
+        return "분"
     # 끝에 괄호가 있으면 괄호 앞 낱말로 판단 (fix1113: 흙(토)이, 3월(癸卯)과, 강약(억부)을)
     # 괄호 앞에 읽을 글자가 없을 때만 괄호 안 독음을 씀
     if s.endswith(")"):
@@ -215,6 +217,113 @@ def fix_josa(text):
         return stem + right
 
     return _FIX.sub(repl, text)
+
+
+
+# ------------------------------------------------------------------ josa1116: 마지막 조사 맞춤(settle)
+# 풀이 괄호·한자·태그가 모두 들어간 뒤 한 번 더 돌려요. 괄호(漢·풀이)는 건너뛰고 그 앞 한글 낱말 받침으로 조사를 골라요.
+_S_PS = ("이에요", "예요", "으로", "이라", "을", "를", "이", "가", "은", "는", "과", "와", "로")
+_S_PAIR = {"이에요": ("이에요", "예요"), "예요": ("이에요", "예요"), "이라": ("이라", "라"),
+           "을": ("을", "를"), "를": ("을", "를"), "이": ("이", "가"), "가": ("이", "가"), "은": ("은", "는"), "는": ("은", "는"),
+           "과": ("과", "와"), "와": ("과", "와"), "으로": ("으로", "로"), "로": ("으로", "로")}
+_S_STEMS = "갑을병정무기경신임계"; _S_BR = "자축인묘진사오미신유술해"
+_S_LEX = set(_S_STEMS) | set(_S_BR) | {a + b for i, a in enumerate(_S_STEMS) for j, b in enumerate(_S_BR) if i % 2 == j % 2} | {
+    "목", "화", "토", "금", "수", "나무", "불", "흙", "쇠", "물", "합", "충", "형", "파", "해", "님", "고객님", "상대방", "상대", "배우자",
+    "일주", "월주", "년주", "시주", "사주", "명식", "격", "기운", "궁합", "원진", "귀문", "공망", "남편", "아내", "자녀"}
+# 낱말 끝이 조사처럼 생긴 말: 건드리지 않아요
+_S_WORDS = {"가을", "마을", "고을", "효과", "사과", "교과", "초과", "부과", "이과", "평가", "국가", "추가", "증가", "단가", "원가", "대가",
+            "휴가", "작가", "참가", "전가", "시가", "주가", "물가", "불가", "경로", "진로", "통로", "활로", "수로", "도로", "항로", "선로",
+            "회로", "공로", "모은", "지은", "나은", "이은", "부은", "그은", "물로", "불로"}
+_S_XI = {"사이", "나이", "아이", "차이", "오이", "거리", "길이", "높이", "깊이", "넓이", "놀이", "먹이", "벌이", "살이", "풀이"}
+_S_INLINE = re.compile(r"</?(?:b|strong|span|em|i|u|small|sup|sub)\b[^>]*>")
+_S_END = re.compile(r"[\"'“”‘’.,!?…:;~\]\-–—]+$")
+
+
+def _s_last(word):
+    """괄호를 건너뛴 앞 낱말의 마지막 소리(한글 음절). 못 읽으면 None."""
+    w = word
+    while w.endswith(")"):
+        d = 0; k = -1
+        for k in range(len(w) - 1, -1, -1):
+            if w[k] == ")": d += 1
+            elif w[k] == "(":
+                d -= 1
+                if d == 0: break
+        if k <= 0 or d: return None, None
+        w = w[:k]
+    if not w or w[-1] in "·/(": return None, None
+    if re.search(r"\d{1,2}:\d{2}$", w): return "분", w        # 07:30 → 칠 시 삼십 분
+    if w.endswith("%"): return "트", w                         # 퍼센트
+    for ch in reversed(w):
+        if ch in "·/": return None, None
+        r = _reading_char(ch)
+        if r: return r[-1], w
+    return None, None
+
+
+def _s_core(w):
+    return re.split(r"[·/(]", w)[-1]
+
+
+def settle(html):
+    """보이는 글 기준으로 낱말+조사를 찾아 받침에 맞게 고쳐요(태그·한자·풀이 괄호 무시). 확실한 자리만 고쳐요."""
+    if not html:
+        return html
+    # 보이는 글자와 html 위치 대응표
+    vis, pos = [], []
+    i, n = 0, len(html)
+    skip_re = re.compile(r"<(style|script)\b.*?</\1>", re.S)
+    while i < n:
+        if html[i] == "<":
+            m = skip_re.match(html, i)
+            if m: vis.append(" "); pos.append(-1); i = m.end(); continue
+            j = html.find(">", i)
+            if j < 0: break
+            tag = html[i:j + 1]
+            if not _S_INLINE.fullmatch(tag) and not tag.startswith("<!--"):
+                vis.append(" "); pos.append(-1)
+            i = j + 1; continue
+        vis.append(html[i]); pos.append(i); i += 1
+    text = "".join(vis)
+    nouns = set(re.findall(r"([가-힣]{2,})(?:의|에게|께서)(?=[\s,.·])", text))
+    edits = []
+    for m in re.finditer(r"\S+", text):
+        tok = m.group(0); st = m.start()
+        lead = len(tok) - len(tok.lstrip("(\"'“‘["))
+        tok2 = _S_END.sub("", tok[lead:])
+        if len(tok2) < 2: continue
+        for p in _S_PS:
+            if not tok2.endswith(p) or len(tok2) == len(p): continue
+            stem = tok2[:-len(p)]
+            last, word = _s_last(stem)
+            if not last: break
+            core = _s_core(word)
+            if tok2 in _S_WORDS or core + p in _S_WORDS or core in _S_WORDS: break
+            if p in ("이에요", "이라", "이") and core + "이" in _S_XI:
+                if p == "이에요":   # 사이에요 → 사이예요
+                    ps = st + lead + len(tok2) - 2
+                    hp = [pos[k] for k in range(ps, ps + 2)]
+                    if -1 not in hp and hp[1] == hp[0] + 1: edits.append((hp[0], hp[0] + 2, "예요"))
+                break
+            j = _jong(last)
+            if j is None: break
+            a, b = _S_PAIR[p]
+            right = (b if j in (0, 8) else a) if p in ("으로", "로") else (a if j else b)
+            if right == p: break
+            strong = (word != stem) or not ("가" <= word[-1] <= "힣") or core in _S_LEX or core.endswith("님") or core in nouns
+            if not strong:
+                from gloss import T as _T  # 사주 용어
+                strong = core in _T or any(len(x) >= 2 and core.endswith(x) for x in _T)
+            weak_ok = p in ("를", "예요", "이에요", "과", "와", "으로") or (p == "을" and not core.endswith("을"))
+            if not (strong or weak_ok): break
+            ps = st + lead + len(tok2) - len(p)
+            hp = [pos[k] for k in range(ps, ps + len(p))]
+            if -1 in hp or hp != list(range(hp[0], hp[0] + len(p))): break
+            edits.append((hp[0], hp[0] + len(p), right))
+            break
+    for a_, b_, r in reversed(edits):
+        html = html[:a_] + r + html[b_:]
+    return html
 
 
 if __name__ == "__main__":

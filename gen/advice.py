@@ -282,9 +282,10 @@ def _short_tail(p, tone):
     return None
 
 
-def short_advice(c, gz, sc, scope="year", year=None):
-    """표 칸용 짧은 한 줄 → ('조심'|'보완', 문장). 같은 해라도 이 사주와의 관계에 따라 달라져요."""
-    p = PS.P(c, gz, sc, scope, year)
+def short_advice(c, gz, sc, scope="year", year=None, star=None):
+    """표 칸용 짧은 한 줄 → ('추천'|'조심'|'보완', 문장). 같은 해라도 이 사주와의 관계에 따라 달라져요.
+    verdict1116: 좋은 때는 '추천 할 일 · 조심 1개', 보통은 '조심 + 보완', 나쁜 때는 '보완'."""
+    p = PS.P(c, gz, sc, scope, year, tone=star_tone(star))
     W = PS.words()
     fc = "unf" if p.f <= -1 else "fav"
     cau, rem = SHORT2[p.g][fc]
@@ -292,7 +293,7 @@ def short_advice(c, gz, sc, scope="year", year=None):
     tail = _short_tail(p, p.tone)
     if p.tone == "good":
         t = PS.fill(PS.pick(cau, c, "sc" + salt), **W)
-        return "조심", t + (", " + tail if tail else "")
+        return "추천", go_short(c, p, salt) + ' · <b class="adv-c">조심</b> ' + (tail if tail and "신중" in tail else t)
     if p.tone == "mid":
         t = PS.fill(PS.pick(cau, c, "sc" + salt), **W)
         if tail: return "조심", t + ", " + tail
@@ -483,23 +484,87 @@ def _scope_kind(scope):
     return "daeun" if ("대운" in scope or "10년" in scope) else "month" if "달" in scope else "year"
 
 
-def period_advice(c, gz, sc, area="gen", key="", max_items=2, scope="이 시기는", lead=True, label=None, kind=None, year=None):
+
+# ------------------------------------------------------------------ verdict1116: 별점이 판정을 정해요
+# ★4~5 = 추천(할 일) + 조심 1개 / ★3 = 조심 1 + 보완 1 / ★1~2 = 보완 1~2
+def star_tone(st):
+    return None if st is None else "good" if st >= 4 else "bad" if st <= 2 else "mid"
+
+VERD = {5: "적극", 4: "추천", 3: "균형", 2: "보완", 1: "보완"}
+
+def vd(st, word=None):
+    """표 칸 맨 앞의 판정 꼬리표"""
+    return f'<span class="tiny">결론 </span><b class="vd vd{st}">{word or VERD[st]}</b>'
+
+def cls(k):
+    return "adv-c" if k == "조심" else "adv-g" if k == "추천" else "adv-s"
+kcls = cls
+
+GO = {
+ "gen": {"비겁": ["믿을 만한 사람과 역할을 나눠 함께 움직이면 힘이 커져요. 협업·모임 제안은 받아 보세요.", "내 힘으로 밀고 나갈 일 하나를 정해 끝까지 해 보세요."],
+         "식상": ["미뤄 둔 {side}·아이디어를 꺼내 실제로 시작해 보세요.", "결과물을 사람들 앞에 내놓을수록 기회가 붙어요. 발표·홍보를 늘리세요."],
+         "재성": ["{income:을} 늘릴 일을 적극적으로 잡으세요. 정해 둔 범위 안의 {deal:은} 진행해도 좋아요.", "돈이 도는 해라 저축 목표를 높여 잡고 바로 실행하세요."],
+         "관성": ["맡겨지는 책임·자리는 받아 보세요. 인정으로 돌아와요.", "{workplace}에서 평가받을 일을 앞에 두고 원칙대로 밀고 가세요."],
+         "인성": ["자격·공부·문서 일을 시작하기 좋아요. 배울 것 하나를 정해 등록하세요.", "도와줄 어른·{boss}에게 먼저 조언을 구하면 일이 빨라져요."]},
+ "money": {"비겁": ["사람을 통해 들어오는 돈 기회를 살펴보세요.", "함께 버는 구조(공동 작업·소개)를 만들기 좋아요."],
+           "식상": ["{side}·재능을 돈으로 바꿀 일을 시작하세요.", "재능과 손끝이 돈으로 이어지기 쉬운 때예요. 잘하는 것 하나를 수입으로 연결해 보세요."],
+           "재성": ["정해 둔 예산 안에서 {money_move:을} 진행해도 좋아요.", "수입이 늘 때 저축·자동이체 금액을 올리세요."],
+           "관성": ["안정된 수입처를 굳히는 계약을 잡기 좋아요.", "신용을 쌓는 일(대출 정리·신용 관리)을 하기 좋아요."],
+           "인성": ["문서·자격·부동산 공부로 돈의 기반을 다지세요.", "계약서·등기 같은 문서 일을 진행하기 좋아요."]},
+ "job": {"비겁": ["{peers:와} 손잡는 일, 팀을 꾸리는 일을 해 보세요.", "혼자 맡아 끝낼 {work} 하나를 가져오세요."],
+         "식상": ["{result:을} 드러낼 기회(발표·제안)를 먼저 잡으세요.", "새 아이디어를 {workplace}에서 실제로 시도해 보세요."],
+         "재성": ["{income:을} 늘릴 {deal:을} 적극적으로 진행하세요.", "성과가 숫자로 나는 {work}에 힘을 모으세요."],
+         "관성": ["책임 있는 자리·역할 제안은 받아 보세요.", "{boss}에게 인정받을 일을 앞에 두세요."],
+         "인성": ["{grow:을} 쌓을 공부·자격을 시작하세요.", "도와줄 사람의 추천·소개를 적극 활용하세요."]},
+ "rel": {"비겁": ["친구·동료와 함께하는 계획을 잡아 보세요.", "오래 못 본 사람에게 먼저 연락하세요."],
+         "식상": ["마음을 표현하기 좋은 때예요. 고마운 말을 먼저 건네세요.", "함께 즐길 일정(여행·취미)을 잡아 보세요."],
+         "재성": ["가까운 사람과 함께할 생활 계획(집·저축)을 세워 보세요.", "가족을 위해 시간과 비용을 쓰기 좋아요."],
+         "관성": ["관계의 약속을 분명히 하기 좋은 때예요.", "윗사람·어른과의 관계를 다지세요."],
+         "인성": ["믿고 기대는 대화를 늘려 보세요.", "어른께 먼저 안부를 챙기세요."]},
+ "health": {"비겁": ["운동 모임처럼 함께하는 운동을 시작하세요.", "체력이 받쳐 주니 운동 강도를 조금 올려 보세요."],
+            "식상": ["몸을 쓰는 취미를 하나 시작하세요.", "식단·잠 루틴을 새로 짜기 좋아요."],
+            "재성": ["검진·운동 등록처럼 건강에 돈과 시간을 쓰세요.", "생활 리듬을 정리해 체력을 저축하세요."],
+            "관성": ["규칙적인 운동 일정을 달력에 고정하세요.", "미뤄 둔 검진을 이 해에 받으세요."],
+            "인성": ["휴식·명상 같은 회복 습관을 들이기 좋아요.", "건강 공부를 해 생활에 하나씩 적용하세요."]},
+}
+GO_SHORT = {"비겁": ["협업 제안 받아 보기", "함께 움직이기"], "식상": ["아이디어 바로 실행", "결과물 내놓기"],
+            "재성": ["수입 늘릴 일 잡기", "예산 안의 {deal} 진행"], "관성": ["책임 있는 자리 받기", "인정받을 일 앞세우기"],
+            "인성": ["공부·자격 시작", "추천·소개 활용"]}
+NEG_RE = re.compile(r"손해|흔들|부딪|갈리|새기|어긋|압박|걱정|지치|늦어|마찰|다툼|오해|갈라|부담|과욕|무리하기 쉬|서운|느려|몰리|막히|약해|닳|커지기 쉬워요\(재다")
+POS_RE = re.compile(r"좋아지|풀리|풀려|열리|열려|힘이 실리|힘이 붙|좋은 (?:제안|거래|인연|조건)|도움이|도와주는|기회|성장|살아나|따라오|빛나|좋아요|좋은 때|다지기 좋은|감당할 힘")
+
+def go_line(c, p, area, salt):
+    A = GO.get(area, GO["gen"]); g = p.g if p.f >= 0 else p.og
+    return PS.fill(PS.pick(A[g], c, "go" + salt + p.gz), **PS.words())
+
+def go_short(c, p, salt):
+    g = p.g if p.f >= 0 else p.og
+    return PS.fill(PS.pick(GO_SHORT[g], c, "gs" + salt + p.gz), **PS.words())
+
+def _clean_why(why, tone):
+    """verdict1116: 별과 반대 방향의 이유 문장은 빼요(★4 이상에 나쁜 말, ★2 이하에 좋은 말)"""
+    if not why: return ""
+    ss = [x for x in re.split(r"(?<=[.!?요])\s+", why.strip()) if x]
+    if tone == "good": ss = [x for x in ss if not NEG_RE.search(x)]
+    elif tone == "bad": ss = [x for x in ss if not POS_RE.search(x) or NEG_RE.search(x)]
+    return " ".join(ss)
+
+def period_advice(c, gz, sc, area="gen", key="", max_items=2, scope="이 시기는", lead=True, label=None, kind=None, year=None, star=None):
     """기간(대운·세운·월운) 하나의 조언 → [(kind, text)]  kind: '조심' 또는 '보완'
     good: 조심 1개 이상 / mid: 조심 1 + 보완 1 / bad: 이유를 밝힌 첫 문장 + 보완 1~2.
     q1113: 그해 글자만이 아니라 이 사주와의 관계(용신·기신, 강약, 십신, 자리별 합충형, 대운, 없는/넘치는 오행, 성별, 직업)로 골라요."""
     kind = kind or _scope_kind(scope)
     if year is None and key[:4].isdigit(): year = int(key[:4])
-    p = PS.P(c, gz, sc, kind, year)
+    p = PS.P(c, gz, sc, kind, year, tone=star_tone(star))
     tone = p.tone
     out = []
     salt = key + area
     if area == "gen":
-        m = p.mech()
+        m = _clean_why(p.mech(), tone)
         fk, ft = PS.facet(p)
-        if tone == "good":
-            out.append(("조심", m + " " + p.act("caution", salt=salt)))
-            if ft: out.append(("조심", ft))
-            elif p.og != p.g: out.append(("조심", p.act("caution", g=p.og, salt=salt + "o")))
+        if tone == "good":   # verdict1116: 추천 1 + 조심 정확히 1
+            out.append(("추천", (m + " " if m else "") + go_line(c, p, "gen", salt)))
+            out.append(("조심", p.act("caution", salt=salt)))
         elif tone == "mid":
             out.append(("조심", m + " " + p.act("caution", salt=salt)))
             out.append(("보완", ft or p.act("remedy", salt=salt)))
@@ -508,19 +573,20 @@ def period_advice(c, gz, sc, area="gen", key="", max_items=2, scope="이 시기�
             out.append(("보완", ft or yong_remedy(c, salt + gz)))
     else:
         anc = anchor(p, area)
-        why = anc or area_why(p, area)
+        why = _clean_why(anc or area_why(p, area), tone)
         A = ADV[p.g][area]
         cau = _pick_p(A["caution"], c, salt + gz + "c")
         rem = _pick_p(A["remedy"], c, salt + gz + "r")
-        if tone == "good":
-            out.append(("조심", why + " " + cau))
+        if tone == "good":   # verdict1116: 추천 1 + 조심 정확히 1
+            out.append(("추천", (why + " " if why else "") + go_line(c, p, area, salt)))
+            out.append(("조심", cau))
         elif tone == "mid":
             out.append(("조심", why + " " + cau))
             out.append(("보완", rem))
         else:
             out.append(("보완", (why + " " if lead or label or anc else "") + rem))
             out.append(("보완", yong_area(c, area) or yong_remedy(c, salt + gz)))
-    out = out[:max(max_items, 1 if tone == "good" else 2)]
+    out = out[:max(max_items, 2)] if tone == "good" else out[:max(max_items, 1 if tone == "bad" else 2)]
     lab = AREA_LABEL[area] if label is None else label
     if lab:
         out = [(k_, f"{lab}: {t}") for k_, t in out]
@@ -579,8 +645,8 @@ def fmt(items, cls="adv"):
         if _core(t) in seen: continue
         seen.add(_core(t)); keep.append((k, t))
     items = keep
-    return "".join(f'<li class="{cls}"><b class="{"adv-c" if k == "조심" else "adv-s"}">{k}</b> · {t}</li>' for k, t in items)
+    return "".join(f'<li class="{cls}"><b class="{kcls(k)}">{k}</b> · {t}</li>' for k, t in items)
 
 
 def fmt_inline(kind, text):
-    return f'<span class="adv"><b class="{"adv-c" if kind == "조심" else "adv-s"}">{kind}</b> {text}</span>'
+    return f'<span class="adv"><b class="{kcls(kind)}">{kind}</b> {text}</span>'

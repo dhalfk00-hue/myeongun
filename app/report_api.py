@@ -31,6 +31,8 @@ import make_report as MR      # noqa: E402
 import make_gunghap as MG     # noqa: E402
 import palm as PM             # noqa: E402
 import jobs as JB             # noqa: E402  (app1113: 직업 상황별 문장)
+import gloss as GL            # noqa: E402  (gloss1116: 화면 요약도 한자는 한글 읽기 + 쉬운 뜻)
+import josa as JS             # noqa: E402  (josa1116: 풀이 뒤 조사 맞춤 settle)
 import advice as AV           # noqa: E402
 import topics as TP           # noqa: E402  (tier1115: 주제 이름)
 import tiers as TR            # noqa: E402  (tier1115: 등급별 감정서)
@@ -281,8 +283,8 @@ def _pillars(c):
 def _year_card(rep, y, now):
     c = rep.c; gz = E.year_gz(y)
     from texts import EL_KO as _ek  # noqa
-    return {"year": y, "gz": gz, "ko": B.ko(gz), "star": rep.ystar[y], "title": rep.year_title(y),
-            "line": safe_html(rep.year_line(y)), "months": safe_html(rep.best_months_phrase(y)) if y in (now.year, now.year + 1) else "",
+    return {"year": y, "gz": gz, "ko": B.ko(gz), "star": rep.ystar[y], "title": JS.settle(GL.apply(rep.year_title(y), terms=False)),
+            "line": safe_html(JS.settle(GL.apply(rep.year_line(y)))), "months": safe_html(JS.settle(GL.apply(rep.best_months_phrase(y)))) if y in (now.year, now.year + 1) else "",
             "age": c.age(y), "adv": _adv(rep, y)}
 
 
@@ -351,7 +353,7 @@ def _saju_summary(p: P, palm_spec=None):
         "pillars": _pillars(c),
         "elements": c.cnt, "day_master": {"ch": c.dm, "ko": st["ko"], "title": st["title"], "img": st["img"], "el": c.dm_el},
         "yong": c.yong, "hee": c.hee, "gyeok": c.gyeok, "strength": c.st_label,
-        "key3": [{"title": safe_html(t), "text": safe_html(d.replace(" __PALM_KEY2__", ""))} for t, d in (k5[0], k5[1], k5[3])],
+        "key3": [{"title": safe_html(JS.settle(GL.apply(t, terms=False))), "text": safe_html(JS.settle(GL.apply(d.replace(" __PALM_KEY2__", ""))))} for t, d in (k5[0], k5[1], k5[3])],
         "years": [_year_card(rep, y, now) for y in (now.year, now.year + 1)],
         "decade": [{"year": y, "star": rep.ystar[y]} for y in rep.years],
         "job": p.job, "money_gen": gen_money(rep),
@@ -414,7 +416,7 @@ def _gunghap_out(req, F, M, ns, now):
         "rid": rid, "kind": "gunghap", "product": PRODUCTS["gunghap"],
         "score": G.total, "grade": G.grade(),
         "f": person(F, G.F), "m": person(M, G.M),
-        "key3": [{"title": safe_html(t), "text": safe_html(d)} for t, d in (k5[0], k5[1], k5[3])],
+        "key3": [{"title": safe_html(JS.settle(GL.apply(t, terms=False))), "text": safe_html(JS.settle(GL.apply(d)))} for t, d in (k5[0], k5[1], k5[3])],
         "items": [{"name": n, "max": mx, "score": sc} for n, mx, sc, _ in G.score_items],
         "best_years": [{"year": y, "gz": E.year_gz(y)} for y in best[:3]],
         "both_good": G.both_good,

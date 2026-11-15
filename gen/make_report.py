@@ -13,7 +13,7 @@ sys.path.insert(0, HERE)
 import engine as E
 import build as B
 import lunar as L
-from josa import josa, particle, fix_josa
+from josa import josa, particle, fix_josa, settle
 
 
 def time_label(t):
@@ -30,7 +30,7 @@ def prepare(args, now):
     if args.lunar:
         sd = L.lunar_to_solar(y, m, d, args.leap)  # 잘못된 음력 날짜면 여기서 에러
     import jobs as JB
-    JB.apply(getattr(args, "job", None) or "미정")
+    JB.apply(getattr(args, "job", None) or "미정", age=now.year - y + 1)  # release1116: 세는 나이(60세+ 무직 문구용)
     rule = getattr(args, "time_rule", None) or "경도"
     calc_place = "127.5" if rule == "30분" else args.place  # sync1114: '30분' = 표준시 −30분(동경 127.5°) 관례, 기본은 출생지 경도
     r = E.run_saju(args.date, args.time, args.lunar, args.leap, args.gender, calc_place, now.year, now.year + 11)
@@ -56,6 +56,8 @@ def finish(html, title="손명리 감정서"):
         nonlocal n; n += 1; return str(n)
     html = re.sub("__PG__", pg, html)
     html = fix_josa(html)
+    import gloss as GL   # gloss1116: 사주 용어 쉬운 풀이 · 한자는 한글 읽기와 함께
+    html = settle(fix_josa(GL.apply(html)))   # josa1116: 풀이 괄호를 건너뛰고 앞 한글 낱말 받침에 맞춰 조사를 마지막으로 골라요
     for bad in ("\ubc31\uc6b4", "\ub3c4\uc0ac", "\ucca0\ud559\uc6d0", "\ube14\ub85c\uadf8"):
         assert bad not in html, f"금지어 포함: {bad}"
     return f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=800, initial-scale=1"><style>html{{-webkit-text-size-adjust:100%;text-size-adjust:100%}}</style><title>{title}</title><link rel="stylesheet" href="style.css"></head><body>\n{html}\n</body></html>'
@@ -119,8 +121,12 @@ ZOOM_MIN = 0.85       # 이보다 작게 줄이지 않아요(가독성)
 SPLIT_AT = int(LIMIT / ZOOM_MIN)  # 이 높이를 넘으면(0.85로도 못 담으면) 축소 대신 쪽을 나눠요
 SPLIT_JS = r"""([idx, LIM]) => {
   const pages = () => [...document.querySelectorAll('.page')];
-  const meas = (s) => { const r = s.getBoundingClientRect(); let m = 0;
+  const full = (s) => { const r = s.getBoundingClientRect(); let m = 0;
     s.querySelectorAll('.in *').forEach(e => { const q = e.getBoundingClientRect(); if (q.height > 0) m = Math.max(m, q.bottom - r.top); }); return m; };
+  // release1116: 빠른 측정 — '.in'의 바로 아래 블록만 먼저 재고(항상 full 이하), 한도 안으로 들어오면 그때만 전체를 재요. 판정은 full과 똑같아요.
+  const fast = (s) => { const r = s.getBoundingClientRect(); let m = 0;
+    s.querySelectorAll(':scope > .in > *').forEach(e => { const q = e.getBoundingClientRect(); if (q.height > 0) m = Math.max(m, q.bottom - r.top); }); return m; };
+  const meas = (s) => { const f = fast(s); return f > LIM ? f : full(s); };
   const targets = idx.map(i => pages()[i]);
   targets.forEach(pg => {
     const inEl = pg.querySelector('.in'); if (!inEl) return;

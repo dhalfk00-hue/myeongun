@@ -636,7 +636,7 @@ def assemble_gunghap(a, now):
     html = fix_josa(html)
     for bad in ("\ubc31\uc6b4", "\ub3c4\uc0ac", "\ucca0\ud559\uc6d0", "\ube14\ub85c\uadf8"): assert bad not in html, bad
     css = open(os.path.join(HERE, "assets", "style.css")).read() + CSS_EXTRA
-    doc = f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>손명리 결혼 궁합 감정서</title><link rel="stylesheet" href="style.css"></head><body>\n{html}\n</body></html>'
+    doc = f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=800, initial-scale=1"><style>html{{-webkit-text-size-adjust:100%;text-size-adjust:100%}}</style><title>손명리 결혼 궁합 감정서</title><link rel="stylesheet" href="style.css"></head><body>\n{html}\n</body></html>'
     return doc, css, G
 
 

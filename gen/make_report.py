@@ -58,7 +58,7 @@ def finish(html, title="손명리 감정서"):
     html = fix_josa(html)
     for bad in ("\ubc31\uc6b4", "\ub3c4\uc0ac", "\ucca0\ud559\uc6d0", "\ube14\ub85c\uadf8"):
         assert bad not in html, f"금지어 포함: {bad}"
-    return f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>{title}</title><link rel="stylesheet" href="style.css"></head><body>\n{html}\n</body></html>'
+    return f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=800, initial-scale=1"><style>html{{-webkit-text-size-adjust:100%;text-size-adjust:100%}}</style><title>{title}</title><link rel="stylesheet" href="style.css"></head><body>\n{html}\n</body></html>'
 
 
 def assemble(args, now):
@@ -210,14 +210,20 @@ TAIL_JS = r"""([LIM]) => {
 
 
 # 앱 화면(HTML 보기)에서도 PDF와 같은 쪽 나누기·축소를 브라우저에서 해 주는 스크립트 (report_api가 보기 응답에만 붙여요)
+# ui1115: PDF와 같은 고정 좌표계. 페이지 측정 중 바깥 화면 축소를 하지 않아요.
 VIEW_FIT_JS = ("<script>(()=>{const LIM=" + str(LIMIT) + ",SPL=" + str(SPLIT_AT) + ",ZMIN=" + str(ZOOM_MIN) + ";"
                "const meas=(s)=>{const r=s.getBoundingClientRect();let m=0;s.querySelectorAll('.in *').forEach(e=>{const q=e.getBoundingClientRect();if(q.height>0)m=Math.max(m,q.bottom-r.top)});return m};"
                "const split=" + SPLIT_JS + ";"
-               "const go=()=>{const bz=document.body.style.zoom;document.body.style.zoom='';"   # tier1115: 앱 보기 화면의 축소(zoom)를 잠깐 풀고 재야 PDF와 같은 쪽 나누기가 돼요
-               "for(let k=0;k<60;k++){const ps=[...document.querySelectorAll('.page')];const big=ps.map((s,i)=>[i,meas(s),s.classList.contains('flow')&&!s.classList.contains('lite')]).filter(x=>x[1]>(x[2]?LIM:SPL)).map(x=>x[0]);if(!big.length)break;split([big,LIM]);}"
+               "const st=document.createElement('style');st.textContent='@media screen{.page{height:auto!important;min-height:297mm;overflow:visible!important}}';document.head.appendChild(st);"   # ui1115: 화면에서는 어떤 경우에도 내용을 자르지 않고 종이가 늘어나요(PDF는 그대로)
+               "let busy=false;const go=()=>{if(busy)return;busy=true;"
+               "for(let k=0;k<120;k++){const ps=[...document.querySelectorAll('.page')];const big=ps.map((s,i)=>[i,meas(s),s.classList.contains('flow')&&!s.classList.contains('lite')]).filter(x=>x[1]>(x[2]?LIM:SPL)).map(x=>x[0]);if(!big.length)break;split([big,LIM]);}"
                "(" + TAIL_JS + ")([LIM]);"
-               "for(let k=0;k<4;k++){document.querySelectorAll('.page').forEach(s=>{const h=meas(s);if(h>LIM){const el=s.querySelector('.in');const z0=parseFloat(el.dataset.z||'1');const z=Math.max(ZMIN,Math.min(z0-0.02,z0*1040/h));el.dataset.z=z;el.style.zoom=z;}});}document.body.style.zoom=bz;};"
-               "(document.fonts?document.fonts.ready:Promise.resolve()).then(go);})();</script>")
+               "for(let k=0;k<8;k++){document.querySelectorAll('.page').forEach(s=>{const h=meas(s);if(h>LIM){const el=s.querySelector('.in');const z0=parseFloat(el.dataset.z||'1');const z=Math.max(ZMIN,Math.min(z0-0.02,z0*1040/h));el.dataset.z=z;el.style.zoom=z;}});}"
+               "document.documentElement.dataset.fitReady='1';busy=false;};"
+               "const fonts=document.fonts?document.fonts.ready:Promise.resolve();"
+               "const load=document.readyState==='complete'?Promise.resolve():new Promise(r=>window.addEventListener('load',r,{once:true}));"
+               "Promise.all([fonts,load]).then(()=>requestAnimationFrame(()=>requestAnimationFrame(go)));"
+               "if(document.fonts)document.fonts.addEventListener('loadingdone',go);window.addEventListener('resize',go);})();</script>")
 
 
 # tier1115: 흐름 쪽(.flow)은 한도에서 바로 나눠요. 기본 등급의 한 쪽짜리(.flow.lite)는 기존처럼 0.85까지 축소를 허용해요
@@ -229,7 +235,7 @@ async def render(src, out, fit=True):
     async with async_playwright() as p:
         b = await p.chromium.launch(executable_path=os.environ.get("CHROME_PATH") or None, args=["--no-sandbox"])
         pg = await b.new_page(viewport={"width": 794, "height": 1123})
-        await pg.goto("file://" + src); await pg.wait_for_timeout(300)
+        await pg.goto("file://" + src); await pg.evaluate("document.fonts.ready"); await pg.wait_for_timeout(300)
         js = """[...document.querySelectorAll('.page')].map((s,i)=>{const r=s.getBoundingClientRect();let m=0;s.querySelectorAll('.in *').forEach(e=>{const q=e.getBoundingClientRect();if(q.height>0)m=Math.max(m,q.bottom-r.top)});return Math.round(m)})"""
         ov = await pg.evaluate(js)
         if fit:  # sync1114: 크게 넘친 쪽(축소하면 0.9 아래)은 블록·표 행 단위로 다음 쪽에 이어 붙여요

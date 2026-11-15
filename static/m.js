@@ -97,7 +97,7 @@
       $(`#${p}-leapw`, f).hidden = cal !== "lunar";
       $(`#${p}-tw`, f).hidden = tm === "unknown";
       $(`#${p}-t2`, f).hidden = tm !== "range";
-      $(`#${p}-tw`, f).style.gridTemplateColumns = tm === "range" ? "1fr 1fr" : "1fr";
+      $(`#${p}-tw`, f).style.gridTemplateColumns = tm === "range" ? "minmax(0,1fr) minmax(0,1fr)" : "minmax(0,1fr)";
       const t = tm === "range" ? "예) 저녁 8시 30분~9시 사이 → 20:30 ~ 21:00. 두 시각의 시주가 같은지 확인해 드려요."
         : tm === "unknown" ? "시간을 몰라도 괜찮아요. 시주(時柱) 없이 여섯 글자로 풀어요." : "";
       $(`#${p}-th`, f).innerHTML = t ? ic("clock") + `<span>${t}</span>` : "";
@@ -237,12 +237,17 @@
     const v = document.createElement("div"); v.className = "viewer";
     v.innerHTML = `<div class="vbar"><button class="btn sm btn-line" id="vx">${ic("back")}닫기</button><b>${esc(title || "감정서")}</b>
       <a class="btn sm btn-gold" href="/api/v2/report/${rid}.pdf?u=${u}" download>PDF</a></div>
-      <iframe title="감정서" src="/api/v2/report/${rid}/report.html?u=${u}"></iframe>`;
+      <div class="vpaper"><iframe title="감정서" src="/api/v2/report/${rid}/report.html?u=${u}"></iframe></div>`;
     document.body.appendChild(v);
-    const fr = $("iframe", v);
-    const fit = () => { try { const doc = fr.contentDocument; doc.body.style.zoom = Math.min(1, (fr.clientWidth - 8) / 800).toFixed(3); } catch { } };
-    fr.onload = fit; window.addEventListener("resize", fit);
-    $("#vx", v).onclick = () => { v.remove(); window.removeEventListener("resize", fit); };
+    // ui1115: 종이는 항상 800px 좌표계에서 쪽을 나눠요. body zoom 대신 iframe 바깥만 축소해
+    // iPhone의 텍스트 자동확대·load/폰트 준비 순서가 쪽 높이 측정에 끼어들지 않게 해요.
+    const fr = $("iframe", v), paper = $(".vpaper", v);
+    const fit = () => { const scale = Math.min(1, Math.max(1, paper.clientWidth - 8) / 800);
+      fr.style.width = "800px"; fr.style.height = Math.max(1, paper.clientHeight / scale) + "px";
+      fr.style.transform = `scale(${scale})`; };
+    const ro = new ResizeObserver(fit); ro.observe(paper);
+    fr.onload = fit; fit(); window.addEventListener("resize", fit);
+    $("#vx", v).onclick = () => { ro.disconnect(); v.remove(); window.removeEventListener("resize", fit); };
   }
 
   /* ---------- 사주 ---------- */

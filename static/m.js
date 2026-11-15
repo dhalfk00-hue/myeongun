@@ -367,7 +367,7 @@
     move: "이동수 · 좋은 방향 · 피할 방향", gunghap: "상대와의 궁합 · 상대 정보 필요", health: "약한 오행 · 관리 포인트", kids: "자녀의 별 · 자녀궁" };
   const tkey = ks => [...ks].sort().join("+");
   function tierUI(box, d, b) {
-    const T = CONFIG.tiers || {}, F = T.focus || { price: 2900, pages: "8~10쪽" }, Pm = T.premium || { price: 9900, pages: "약 20쪽" };
+    const T = CONFIG.tiers || {}, F = T.focus || { price: 2900, pages: "9~10쪽" }, Pm = T.premium || { price: 9900, pages: "22~23쪽" };
     const st = box._st || (box._st = { sel: [], partner: store.get("partner") || null });
     const own = ownInfo(d.chart), selKey = tkey(st.sel);
     const focusOpen = own.premium || (st.sel.length === 2 && own.focus.includes(selKey));
@@ -375,11 +375,15 @@
     const up = !own.premium && own.focus.length > 0;
     box.innerHTML = `<div class="tiers">
       <div class="sect"><b>감정서 고르기</b><span>REPORTS</span></div>
-      <div class="tcard free"><div class="th"><b>기본 감정서</b><span class="pr">무료</span></div>
-        <p class="ti">명식과 오행 · 타고난 성격 · 용신 한눈에 · 올해 운세 · ${esc((T.free || {}).pages || "2~3쪽")}</p>
-        <button class="btn btn-line sm" data-tier="free">${ic("doc")}기본 감정서 보기</button></div>
+      <div class="tcard free"><div class="th"><b>사주 요약</b><span class="pr">무료 · 이 화면</span></div>
+        <p class="ti">위에 보이는 원국(네 기둥)·오행·핵심 3가지·올해와 내년 흐름·10년 별점까지가 무료예요. 무료에는 감정서 보기와 PDF가 없어요.</p>
+        <div class="fup"><b>더 자세히 보고 싶다면</b>
+          <ul><li><em>${won(F.price)}</em><span>주제 심층 · 고른 주제 2개를 ${esc(F.pages)} 감정서로 풀어요. 타고난 바탕, 대운 10년, 해마다 조심할 점과 보완할 점, 힘이 실리는 해와 조심할 해가 들어가요.</span></li>
+          <li><em>${won(Pm.price)}</em><span>프리미엄 · 7개 주제 전체와 대운 × 주제 표, 올해·내년 월별 운세, 개운법까지 ${esc(Pm.pages)}이에요.</span></li></ul>
+          <p class="mini">주제 심층을 먼저 열었다면 같은 사주의 프리미엄은 차액 ${won(Pm.price - F.price)}만 내요. 감정서는 앱에서 보고 PDF로 저장할 수 있어요.</p>
+          <button type="button" class="btn btn-line sm" id="tp-go">${ic("doc")}주제 2개 고르러 가기</button></div></div>
       <div class="tcard focus${focusOpen ? " open" : ""}"><div class="th"><b>주제 심층 · 2개</b><span class="pr">${focusOpen ? "열림" : won(F.price)}</span></div>
-        <p class="ti">기본 감정서 + 고른 주제마다 타고난 바탕 · 대운 10년 · 해마다 조심/보완 · 힘이 실리는 해 · ${esc(F.pages)}</p>
+        <p class="ti">사주 바탕 + 고른 주제마다 타고난 바탕 · 대운 10년 · 해마다 조심/보완 · 힘이 실리는 해 · ${esc(F.pages)}</p>
         <div class="tp-h"><span>주제를 <b>2개</b> 골라 주세요</span><em class="${st.sel.length === 2 ? "ok" : ""}">${st.sel.length} / 2</em></div>
         <div class="topics">${TOPICS().map(t => { const on = st.sel.includes(t.key), dis = !on && st.sel.length >= 2;
           return `<button type="button" class="tp${on ? " on" : ""}${dis ? " dis" : ""}" data-tp="${t.key}" aria-pressed="${on}"${dis ? ' aria-disabled="true"' : ""}><b>${esc(t.ko)}</b><small>${esc(TDESC[t.key] || "")}</small></button>`; }).join("")}</div>
@@ -398,6 +402,7 @@
       tierUI(box, d, b); });
     const pe = $("#tp-pe", box); if (pe) pe.onclick = () => partnerSheet(b, st.partner, p => { st.partner = p; store.set("partner", p); tierUI(box, d, b); });
     $$("[data-tier]", box).forEach(x => x.onclick = () => openTier(box, d, b, x.dataset.tier, st));
+    const go = $("#tp-go", box); if (go) go.onclick = () => $(".tcard.focus", box).scrollIntoView({ behavior: "smooth", block: "start" });   // free1115
   }
   function partnerSheet(me, cur, done) {
     const bg = document.createElement("div"); bg.className = "sheet-bg";

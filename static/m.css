@@ -463,3 +463,11 @@ html.palm-on [data-nopalm]{display:none!important}
  .five{grid-template-columns:minmax(0,1fr)}.five .radar{margin:auto}
  .vs{grid-template-columns:minmax(0,1fr) 80px minmax(0,1fr)}
 }
+
+/* free1115: 무료 = 화면 요약, 유료 안내 */
+.tcard.free .fup{margin-top:12px;padding:14px;border-radius:14px;background:rgba(214,185,124,.05);border:1px solid var(--line)}
+.tcard.free .fup>b{display:block;font-size:13.5px;color:var(--gold-hi);margin-bottom:8px}
+.tcard.free .fup ul{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:8px}
+.tcard.free .fup li{display:grid;grid-template-columns:62px minmax(0,1fr);gap:8px;font-size:13px;line-height:1.6;color:var(--ink2)}
+.tcard.free .fup li em{font-style:normal;font-weight:600;color:var(--gold-hi);white-space:nowrap}
+.tcard.free .fup .mini{margin:0 0 12px}

@@ -580,10 +580,15 @@ def api_purchase(req: PurchaseReq):
         return _tier_purchase(req)
     if req.product not in {v["id"] for v in PRODUCTS.values()}:
         raise HTTPException(400, "상품을 확인해 주세요")
+    if req.product == PRODUCTS["saju"]["id"]:   # free1115: 사주 종합 감정서는 주제 심층·프리미엄으로 바뀌었어요
+        raise HTTPException(403, FREE_MSG)
     if DEV_UNLOCK and req.token == "DEV-UNLOCK":
         return {"ok": True, "unlock": _sign("unlock:" + req.rid), "mode": "dev"}
     # TODO(Play 결제): Google Play Developer API purchases.products.get 으로 purchaseToken 확인 → 소비(consume) 처리
     raise HTTPException(402, "결제 연동을 준비 중이에요")
+
+
+FREE_MSG = "무료는 화면의 사주 요약까지예요. 감정서(보기·PDF)는 주제 심층 2,900원부터 열려요."
 
 
 def _rdir(rid):
@@ -592,6 +597,12 @@ def _rdir(rid):
     d = CACHE / rid
     if not d.exists():
         raise HTTPException(404, "감정서 보관 기간(24시간)이 지났어요. 다시 만들어 주세요")
+    try:   # free1115: 무료 등급 감정서는 보기·PDF·자료 모두 막아요(예전에 만들어 둔 것도)
+        meta = json.loads((d / "meta.json").read_text())
+    except Exception:
+        meta = {}
+    if (meta.get("kind") == "tier" and meta.get("tier") not in TIER_PAID) or meta.get("kind") == "saju":
+        raise HTTPException(403, FREE_MSG)   # 'saju' = 무료 화면 요약과 함께 만들어지는 예전 종합 감정서(이제 팔지 않아요)
     return d
 
 
@@ -652,16 +663,17 @@ def flags_js():
 
 # ------------------------------------------------------------------ tier1115: 등급별 감정서 (기본 무료 · 주제 심층 2,900원 · 프리미엄 9,900원)
 TIERS = {
-    "free": {"id": None, "price": 0, "title": "기본 감정서", "pages": "2~3쪽",
-             "incl": ["명식(네 기둥)과 오행", "타고난 성격", "용신 한눈에", "올해 운세 한 장"]},
-    "focus": {"id": "focus_2900", "price": 2900, "title": "주제 심층 감정서 · 주제 2개", "pages": "8~10쪽",
-              "incl": ["기본 감정서 전부", "고른 주제 2개: 타고난 바탕 · 대운 10년 · 해마다 조심/보완 · 힘이 실리는 해와 조심할 해", "개운법"]},
-    "premium": {"id": "premium_9900", "price": 9900, "title": "프리미엄 감정서 · 전체 주제", "pages": "약 20쪽",
+    "free": {"id": None, "price": 0, "title": "사주 요약 (화면)", "pages": "화면 요약 · PDF 없음", "report": False,   # free1115
+             "incl": ["네 기둥(원국)과 오행", "일간·신강약·격국·용신", "핵심 3가지", "올해·내년 흐름 한 줄", "앞으로 10년 별점"]},
+    "focus": {"id": "focus_2900", "price": 2900, "title": "주제 심층 감정서 · 주제 2개", "pages": "9~10쪽",
+              "incl": ["사주 바탕(명식·오행·성격·용신·올해 운세)", "고른 주제 2개: 타고난 바탕 · 대운 10년 · 해마다 조심/보완 · 힘이 실리는 해와 조심할 해", "개운법"]},
+    "premium": {"id": "premium_9900", "price": 9900, "title": "프리미엄 감정서 · 전체 주제", "pages": "22~23쪽",
                 "incl": ["용신·격국 풀이 · 성격", "대운 10년 흐름 · 대운 × 주제 표", "돈·직업·사업·결혼·이사·건강·자녀 7개 주제 (상대 정보를 넣으면 궁합까지)",
                          "올해·내년 월별 운세", "개운법"]},
 }
 UPGRADE = {"id": "upgrade_7000", "price": 7000, "title": "프리미엄으로 올리기 · 차액", "from": "focus_2900", "to": "premium_9900"}
 TIER_PRODUCT_IDS = {"focus_2900": "focus", "premium_9900": "premium", "upgrade_7000": "premium"}
+TIER_PAID = ("focus", "premium")   # free1115: 감정서(보기·PDF)는 유료 등급만
 
 
 def _topics_key(topics):
@@ -689,7 +701,7 @@ def _owns(tokens, chart):
 
 
 def _covers(owns, tier, topics):
-    if tier == "free": return True
+    if tier not in TIER_PAID: return False   # free1115: 무료는 감정서를 열지 않아요
     if ("premium", "-") in owns: return True        # 프리미엄을 산 사주는 주제 심층도 모두 열려요
     return tier == "focus" and ("focus", _topics_key(topics)) in owns
 
@@ -740,6 +752,8 @@ def api_tier(req: TierReq):
     tier = req.tier if req.tier in TIERS else None
     if not tier:
         raise HTTPException(400, "등급을 확인해 주세요")
+    if tier not in TIER_PAID:   # free1115: 무료 감정서는 만들지도 보관하지도 않아요
+        raise HTTPException(403, FREE_MSG)
     try:
         topics = TP.parse_topics(",".join(str(x) for x in (req.topics or [])))
     except ValueError as e:

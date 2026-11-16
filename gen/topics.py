@@ -348,19 +348,21 @@ class Topics:
             v = {t: self.tscore(t, p["gz"]) for t in ts}
             sv = {t: c.stars(v[t]) for t in ts}
             hi = max(ts, key=lambda t: (sv[t], v[t])); lo = min(ts, key=lambda t: (sv[t], v[t]))
-            cells = "".join(f'<td class="stars" style="text-align:center">{sv[t]}</td>' for t in ts)
+            cells = "".join(f'<td class="stars" style="text-align:center">★{sv[t]}<span class="sw">{ {5: "아주 좋음", 4: "좋음", 3: "보통", 2: "조심", 1: "크게 조심"}[sv[t]] }</span></td>' for t in ts)   # qa1116: 숫자 옆에 말
             tag = "<b>현재.</b> " if cur and p["gz"] == cur["gz"] else ""
             if sv[hi] == sv[lo]:   # verdict1116: 별이 모두 같으면 '힘이 실리고/조심'을 지어내지 않아요
                 g0 = c.score(p["gz"])[0]; g0s = c.stars(g0)
                 it = AV.period_advice(c, p["gz"], g0, "gen", key="mx" + p["gz"], max_items=2, scope="이 10년은", kind="daeun", star=g0s)
-                txt = f"주제별 차이가 작은 10년이에요(모두 ★{sv[hi]}). {AV.vd(g0s)} {self._compose(it, g0s)}"
+                nsame = rows.count('data-same="1"')   # qa1116: 같은 표에서 같은 문장 반복 금지
+                lead = ("주제별 차이가 작은 10년이에요", "이 10년도 주제 차이가 작아요", "이번에도 주제끼리 고른 10년이에요", "여기도 주제 차이가 크지 않아요")[min(nsame, 3)] + f"(모두 ★{sv[hi]})."
+                txt = f"{lead} {AV.vd(g0s)} {self._compose(it, g0s)}"
             else:
                 k2, x2 = self.adv(lo, p["gz"], v[lo], "mn" + p["gz"], kind="daeun", age=max(p["a0"], c.age(self.Y)))
                 low = "은 보완" if sv[lo] <= 2 else "은 상대적으로 낮아요"
                 txt = f"<b>{LB[hi]}</b>(★{sv[hi]})에 힘이 실리고 <b>{LB[lo]}</b>(★{sv[lo]}){particle(LB[lo], '은')}{low[1:]} · {k2} {x2}"
-            rows += (f'<tr{" class=hl" if tag else ""}><td>{p["gz"]}<br><span class="tiny">만 {p["a0"]}~{p["a1"]}세<br>{p["y0"]}~{p["y1"]}</span></td>{cells}'
+            rows += (f'<tr{" class=hl" if tag else ""}{' data-same="1"' if sv[hi] == sv[lo] else ""}><td>{p["gz"]}<br><span class="tiny">만 {p["a0"]}~{p["a1"]}세<br>{p["y0"]}~{p["y1"]}</span></td>{cells}'
                      f'<td class="small">{tag}{txt}</td></tr>')
-        return (f'<h3>대운 × 주제 · 10년마다 어느 쪽에 힘이 실리나</h3><p class="small">숫자는 그 대운에서 주제별로 따로 본 별점(1~5)이에요. 별이 가장 높은 주제와 낮은 주제를 적고, 모두 같으면 차이가 작다고만 적었어요.</p>'
+        return (f'<h3>대운 × 주제 · 10년마다 어느 쪽에 힘이 실리나</h3><p class="small">숫자는 그 대운에서 주제별로 따로 본 별점(★1~★5)이에요. 모든 주제가 높을수록 좋아요(건강도 높을수록 탈이 적어요). 별이 가장 높은 주제와 낮은 주제를 적고, 모두 같으면 차이가 작다고만 적었어요.</p>'
                 f'<table><tr><th style="width:13%">대운</th>{head}<th>읽는 법</th></tr>{rows}</table>')
 
     def month_hint(self, t, y, sh=0, star=3):

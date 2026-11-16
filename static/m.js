@@ -11,7 +11,9 @@
   const fyFill = () => document.querySelectorAll("[data-fy]").forEach(e => { e.textContent = e.dataset.fy === "yg" ? `${FY.y} ${FY.gz}年` : String(FY.y); });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fyFill); else fyFill();
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const stars = n => `<div class="stars" aria-label="5점 중 ${n}점">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= n ? "on" : ""}"></i>`).join("")}</div>`;
+  const SW = { 5: "아주 좋음", 4: "좋음", 3: "보통", 2: "조심", 1: "크게 조심" };   // qa1116: 별점 옆에 말을 함께 적어요(높을수록 좋음)
+  const SLG = `<p class="slg">별점은 높을수록 좋아요 · ★5 아주 좋음 · ★4 좋음 · ★3 보통 · ★2 조심 · ★1 크게 조심</p>`;
+  const stars = n => `<div class="stars" aria-label="5점 중 ${n}점 ${SW[n] || ""}">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= n ? "on" : ""}"></i>`).join("")}${SW[n] ? `<span class="sw">★${n} ${SW[n]}</span>` : ""}</div>`;
   const ic = (n, c = "i") => `<svg class="${c}"><use href="#i-${n}"/></svg>`;
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const HAN = { 목: "木", 화: "火", 토: "土", 금: "金", 수: "水" };
@@ -35,7 +37,7 @@
   const views = {};
   function go(v, push = true) {
     if (v === "palm") v = "saju";   // PALM 꺼져 있으면 #palm 주소도 사주로   // 손금은 사주와 함께 보는 한 흐름(생년월일 → 손금 → 교차 풀이)
-    if (!["home", "saju", "gunghap"].includes(v)) v = "home";
+    if (!["home", "saju", "gunghap", "newyear"].includes(v)) v = "home";
     $$(".view").forEach(s => s.classList.toggle("on", s.id === "v-" + v));
     $$(".tabbar button").forEach(b => b.classList.toggle("on", b.dataset.go === v));
     $("#back").hidden = v === "home";
@@ -155,7 +157,7 @@
       <path d="M18 108A96 96 0 0 1 210 108" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="2"/>${ticks}
       <path class="garc" d="M18 108A96 96 0 0 1 210 108" fill="none" stroke="url(#gg${n})" stroke-width="3" stroke-linecap="round" style="stroke-dasharray:${v.toFixed(1)} ${L.toFixed(1)};--v:${v.toFixed(1)}"/>
       ${n ? `<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="4.5" fill="#f6e7bf" style="filter:drop-shadow(0 0 6px #d6b97c)"/>` : ""}</svg>
-      <div class="v"><b class="gt">${n}</b><small>/ 5</small><span>${label || "운세 지수"}</span></div></div>`;
+      <div class="v"><b class="gt">${n}</b><small>/ 5${SW[n] ? " · " + SW[n] : ""}</small><span>${label || "운세 지수"}</span></div></div>`;
   }
   const ORB = (() => { const B = "子丑寅卯辰巳午未申酉戌亥"; return `<svg viewBox="0 0 150 150"><g class="r1">${[...B].map((c, i) => { const a = i * 30 * Math.PI / 180;
     return `<text x="${75 + 62 * Math.sin(a)}" y="${75 - 62 * Math.cos(a) + 4}" text-anchor="middle" font-family="MW Serif,serif" font-size="10" fill="#d6b97c" opacity=".75">${c}</text>`; }).join("")}</g>
@@ -310,11 +312,11 @@
   const advHTML = y => (y.adv || []).length ? `<ul class="yadv">${y.adv.map(a => `<li><b class="${a.kind === "조심" ? "ya-c" : "ya-s"}">${esc(a.kind)}</b>${a.text}</li>`).join("")}</ul>` : "";
   function yearCard(y, ny, i) {
     if (!ny) return `<div ${rv(i, "yearcard sm")}><div class="yy">${y.gz}<small>${y.year}</small></div><div class="eb">올해 · ${y.ko}년</div>
-      <h3>${esc(y.title)}</h3>${stars(y.star)}<p>${y.line}.</p>${y.months ? `<p>${y.months}</p>` : ""}${advHTML(y)}</div>`;
+      <h3>${esc(y.title)}</h3>${stars(y.star)}<p>${y.line}.</p>${y.months ? `<p>${y.months}</p>` : ""}${advHTML(y)}${SLG}</div>`;
     return `<div ${rv(i, "yearcard ny")}><div class="eb">신년운세 · ${y.year} ${y.gz}年</div>
       ${gaugeHTML(y.star, `${y.year} 운세 지수`)}
       <h3>${esc(y.title)}</h3>${stars(y.star)}
-      <p>${y.line}.</p>${y.months ? `<div class="mo">${ic("cal")}<span>${y.months}</span></div>` : ""}${advHTML(y)}</div>`;
+      <p>${y.line}.</p>${y.months ? `<div class="mo">${ic("cal")}<span>${y.months}</span></div>` : ""}${advHTML(y)}${SLG}</div>`;
   }
   const keysHTML = (k3, i0, title = "한눈에 보는 핵심 3가지", sub = "") => `<div class="keys"><div ${rv(i0, "h3")}>${title}</div>${sub ? `<p class="mini">${sub}</p>` : ""}
     ${k3.map((k, i) => `<div ${rv(i0 + 1 + i, "key")}><span class="n gt">${String(i + 1).padStart(2, "0")}</span><b class="t">${k.title}</b><p>${k.text}</p></div>`).join("")}</div>`;
@@ -332,7 +334,7 @@
   const fiveCard = (d, i) => `<div ${rv(i, "card")}><div class="step">五行 · 다섯 기운</div><h3>오행의 균형</h3>${fiveHTML(d.elements, d)}</div>`;
   const decadeCard = (d, i) => { const pk = Math.max(...d.decade.map(x => x.star)), y1 = d.years[1]; return `<div ${rv(i, "card")}><div class="step">十年 · 앞으로 10년</div><h3>10년 운세 흐름</h3>
         <div class="decade">${d.decade.map(x => `<div class="${x.star === pk ? "pk" : ""}${x.year === y1.year ? " cur" : ""}"><em>${x.star === pk ? "★" : ""}</em><i style="height:${10 + x.star * 15}px;opacity:${0.4 + x.star * 0.12}"></i><span>'${String(x.year).slice(2)}</span></div>`).join("")}</div>
-        <p class="mini" style="margin:14px 0 0">어느 해가 왜 좋은지, 지켜야 할 해는 언제인지는 전체 감정서의 10년 시기표에 있어요.</p></div>`; };
+        <p class="mini" style="margin:14px 0 0">막대가 높을수록 좋은 해예요(★1~★5). 어느 해가 왜 좋은지, 지켜야 할 해는 언제인지는 전체 감정서의 10년 시기표에 있어요.</p></div>`; };
   function sajuResult(d, b) {
     const el = $("#v-saju"), [y0, y1] = d.years;
     b = b || store.get("me");
@@ -367,8 +369,9 @@
     move: "이동수 · 좋은 방향 · 피할 방향", gunghap: "상대와의 궁합 · 상대 정보 필요", health: "약한 오행 · 관리 포인트", kids: "자녀의 별 · 자녀궁" };
   const tkey = ks => [...ks].sort().join("+");
   function tierUI(box, d, b) {
-    const T = CONFIG.tiers || {}, F = T.focus || { price: 2900, pages: "9~10쪽" }, Pm = T.premium || { price: 9900, pages: "22~23쪽" };
-    const st = box._st || (box._st = { sel: [], partner: store.get("partner") || null });
+    const T = CONFIG.tiers || {}, F = T.focus || { price: 2900, pages: "9~10쪽" }, Pm = T.premium || { price: 9900, pages: "24~25쪽" };
+    const pre = store.get("tp_pre"); if (pre) store.set("tp_pre", null);   // newyear1116: 신년운세 칸에서 고른 주제를 미리 골라 둬요
+    const st = box._st || (box._st = { sel: (pre || []).slice(0, 2), partner: store.get("partner") || null });
     const own = ownInfo(d.chart), selKey = tkey(st.sel);
     const focusOpen = own.premium || (st.sel.length === 2 && own.focus.includes(selKey));
     const needP = st.sel.includes("gunghap");
@@ -455,6 +458,59 @@
     const resp = await req.show(); let r;
     try { r = await api("/api/v2/purchase", { rid, product: sku, token: resp.details.purchaseToken, owns }); } catch (e) { await resp.complete("fail"); throw e; }
     await svc.consume(resp.details.purchaseToken); await resp.complete("success"); return r;
+  }
+
+  /* ---------- newyear1116: 2027 신년운세 (토정비결 전통 참고 + 사주 요약 + 주제 8칸 맛보기) ---------- */
+  views.newyear = { init() { const b = store.get("me"); b ? nyLoad(b) : nyForm(); } };
+  function nyForm(err) {
+    const el = $("#v-newyear");
+    el.innerHTML = `<div class="card rv"><div class="step">歲 · ${FY.y} 신년운세</div><div class="title">생년월일을 알려 주세요</div>
+      <p class="lead">토정비결로 한 해의 괘를 짓고, 사주로 ${FY.y}년의 별점과 주제 8가지를 짚어 드려요. 토정비결은 생시를 쓰지 않아요.</p>
+      ${birthForm("n", { value: store.get("me") || {}, job: true })}
+      <p class="err" id="n-err">${esc(err || "")}</p>
+      <button class="btn btn-gold" id="n-go" style="margin-top:18px">${ic("cal")}신년운세 보기</button></div>`;
+    wireBirth(el, "n");
+    $("#n-go", el).onclick = async () => { try { const b = readBirth(el, "n"); await hourPick(b); store.set("me", b); nyLoad(b); } catch (e) { $("#n-err", el).textContent = e.message; } };
+  }
+  async function nyLoad(b) {
+    const el = $("#v-newyear");
+    try { const d = await withLoading(el, ["음력 생일을 찾는 중", "토정비결 괘를 짓는 중", `${FY.y}년 주제 8가지를 읽는 중`], api("/api/v2/newyear/free", b)); nyResult(d, b); }
+    catch (e) { nyForm(e.message); }
+  }
+  const nyStars = n => n ? `<span class="nst">${"★".repeat(n)}<i>${"☆".repeat(5 - n)}</i><em class="sw">${SW[n]}</em></span>` : "";
+  function nyResult(d, b) {
+    const el = $("#v-newyear"), t = d.tojeong, o = d.offer, own = ownsOf(d.chart).some(x => x.split(".")[1] === "newyear");
+    const months = (t.months || []).map(m => `<span class="m ${m.tone}">${m.m}월</span>`).join("");
+    el.innerHTML = `<div class="ny">
+      <div class="ny-hd rv"><b>${d.year} ${esc(d.ko)}년 신년운세</b><span>무료: 토정비결 한 해 괘 + 내 사주 요약 · 음력 생일 기준</span></div>
+      <div class="ny-c rv" style="--i:1"><div class="ny-tg"><span>토정비결</span><span>무료</span><span class="tr">전통 참고</span></div>
+        <div class="gw"><b>${t.sang}·${t.jung}·${t.ha}</b><span>상괘 ${t.sang} · 중괘 ${t.jung} · 하괘 ${t.ha}<br>세는 나이 ${d.age + 1} + ${d.year}년 태세수로 계산</span></div>
+        ${t.ready ? `<p class="one"><b>한 줄 풀이</b> ${t.title ? `「${t.title}」 · ` : ""}${t.line}</p>` : `<p class="one">이 괘의 풀이 문장은 준비 중이에요. 괘 번호는 위와 같아요.</p>`}
+        ${t.conflict ? `<p class="cf">사주 별점(★${d.star} ${SW[d.star] || ""})과 결이 달라요. 판단은 사주 별점을 따르고, 토정 풀이는 전통 참고로 읽어 주세요.</p>` : ""}
+        <p class="nt">※ ${esc(t.note)}</p>
+        ${months ? `<div class="mg">${months}</div><p class="lg"><i class="g"></i>움직이기 좋은 달 · <i class="b"></i>한 번 더 확인할 달 (음력)</p>` : ""}</div>
+      <div class="ny-c rv" style="--i:2"><div class="ny-tg"><span>사주 요약</span><span>무료</span></div>
+        <p>일간 ${esc(d.dm_ko)}(${esc(d.dm)}), ${d.strength || ""} · 용신 ${EL[d.yong] || esc(d.yong)}</p>
+        <p><b>${d.year}년 별점 ${nyStars(d.star)}</b> · ${esc(d.verdict)}. 이사 <b>${esc(d.move)}</b> · 계약 <b>${esc(d.contract)}</b></p>
+        <p class="sm">${d.line}.</p></div>
+      <div class="ny-s rv" style="--i:3"><b>주제별로 ${d.year}년 보기</b> <span>(맛보기 무료 · 자세히는 ${won(d.focus_price)})</span></div>
+      <div class="ny-g">${d.topics.map((x, i) => `<button type="button" class="ny-t rv" style="--i:${4 + i}" data-nt="${x.key}"><div class="th"><b>${esc(x.ko)}</b>${x.partner ? `<em>상대 입력</em>` : nyStars(x.star)}</div>
+        <p>${x.teaser}</p><span class="go">${x.partner ? "상대 넣기" : "자세히 보기"} →</span></button>`).join("")}</div><p class="slg">별점은 높을수록 좋아요(건강도 높을수록 탈이 적어요) · ★5 아주 좋음 · ★4 좋음 · ★3 보통 · ★2 조심 · ★1 크게 조심</p>
+      <p class="err" id="ny-err"></p>
+      <button class="ny-cta rv" id="ny-buy"${o.ready ? "" : " disabled"}><b>${own ? "열림 · " : ""}${d.year}년 전체 신년운세 감정서 보기</b><span>${o.ready ? `12달 흐름 + 8개 주제 · PDF · ${esc(o.pages)}${own ? "" : " · " + won(o.price)}` : "이 괘의 풀이를 준비 중이라 조금 뒤에 열려요"}</span></button>
+      <p class="ny-f">주제 2개만 자세히 보고 싶으면 주제 심층(${won(d.focus_price)}), 평생·10년 흐름까지는 프리미엄(${won(d.premium_price)})이에요.</p>
+      <p class="ny-src">${esc(t.source)}</p>
+      <button class="btn btn-line" id="ny-again">다른 생년월일로 보기</button></div>`;
+    $("#ny-again", el).onclick = () => nyForm();
+    $$("[data-nt]", el).forEach(x => x.onclick = () => { store.set("tp_pre", [x.dataset.nt]); go("saju"); sajuOnly(b); });
+    const buy = $("#ny-buy", el);
+    buy.onclick = async () => {
+      if (buy.disabled) return; const old = buy.innerHTML; buy.disabled = true; buy.innerHTML = "<b>감정서를 만드는 중…</b>";
+      try { const r = await api("/api/v2/tier", { birth: b, tier: "newyear", owns: ownsOf(d.chart) });
+        if (r.unlock) { store.set("u_" + r.rid, r.unlock); openViewer(r.rid, r.title); } else tierBuy(r, r.title, () => nyResult(d, b)); }
+      catch (e) { $("#ny-err", el).textContent = e.message; }
+      finally { if (buy.isConnected) { buy.disabled = false; buy.innerHTML = old; } }
+    };
   }
 
   /* ---------- 궁합 ---------- */

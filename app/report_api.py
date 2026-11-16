@@ -36,6 +36,7 @@ import josa as JS             # noqa: E402  (josa1116: 풀이 뒤 조사 맞춤 
 import advice as AV           # noqa: E402
 import topics as TP           # noqa: E402  (tier1115: 주제 이름)
 import tiers as TR            # noqa: E402  (tier1115: 등급별 감정서)
+import newyear as NY          # noqa: E402  (newyear1116: 2027 신년운세)
 
 # app1113: jobs.apply()가 texts/advice 사전을 제자리에서 바꾸므로, 감정서 조립은 한 번에 한 사람씩
 _GEN_LOCK = threading.RLock()
@@ -109,7 +110,7 @@ def _check_banned(text: str):
             raise HTTPException(500, "감정서 문구 검사에 걸렸어요")
 
 
-ALLOWED_TAG = re.compile(r"</?(b|strong|span)( class=\"gold\")?>")
+ALLOWED_TAG = re.compile(r"</?(b|strong|span)( class=\"(gold|adv-[a-z])\")?>")   # qa1116: 조언 머리말(<b class="adv-c">조심) 태그가 글자로 새어 나오지 않게
 
 
 def safe_html(s: str) -> str:
@@ -669,13 +670,16 @@ TIERS = {
              "incl": ["네 기둥(원국)과 오행", "일간·신강약·격국·용신", "핵심 3가지", "올해·내년 흐름 한 줄", "앞으로 10년 별점"]},
     "focus": {"id": "focus_2900", "price": 2900, "title": "주제 심층 감정서 · 주제 2개", "pages": "9~10쪽",
               "incl": ["사주 바탕(명식·오행·성격·용신·올해 운세)", "고른 주제 2개: 타고난 바탕 · 대운 10년 · 해마다 조심/보완 · 힘이 실리는 해와 조심할 해", "개운법"]},
-    "premium": {"id": "premium_9900", "price": 9900, "title": "프리미엄 감정서 · 전체 주제", "pages": "22~23쪽",
+    "premium": {"id": "premium_9900", "price": 9900, "title": "프리미엄 감정서 · 전체 주제", "pages": "24~25쪽",
                 "incl": ["용신·격국 풀이 · 성격", "대운 10년 흐름 · 대운 × 주제 표", "돈·직업·사업·결혼·이사·건강·자녀 7개 주제 (상대 정보를 넣으면 궁합까지)",
                          "올해·내년 월별 운세", "개운법"]},
+    "newyear": {"id": "newyear_4900", "price": 4900, "title": "2027 신년운세 감정서", "pages": "12~14쪽", "year": 2027,   # newyear1116
+                "incl": ["2027년 총운 · 할 일 · 조심 · 이사·계약 판정", "토정비결 총운과 12달(전통 참고)", "열두 달 달력 · 주제별 별점과 한 줄",
+                         "돈·직업·사업·결혼·이사·궁합·건강·자녀 8개 주제의 2027년", "개운법"]},
 }
 UPGRADE = {"id": "upgrade_7000", "price": 7000, "title": "프리미엄으로 올리기 · 차액", "from": "focus_2900", "to": "premium_9900"}
-TIER_PRODUCT_IDS = {"focus_2900": "focus", "premium_9900": "premium", "upgrade_7000": "premium"}
-TIER_PAID = ("focus", "premium")   # free1115: 감정서(보기·PDF)는 유료 등급만
+TIER_PRODUCT_IDS = {"focus_2900": "focus", "premium_9900": "premium", "upgrade_7000": "premium", "newyear_4900": "newyear"}
+TIER_PAID = ("focus", "premium", "newyear")   # free1115: 감정서(보기·PDF)는 유료 등급만
 
 
 def _topics_key(topics):
@@ -697,13 +701,14 @@ def _owns(tokens, chart):
         parts = t.split(".")
         if len(parts) != 5 or parts[0] != "own": continue
         msg = ".".join(parts[:4])
-        if parts[2] == chart and parts[1] in ("focus", "premium") and hmac.compare_digest(parts[4], _sign("own:" + msg)[:20]):
+        if parts[2] == chart and parts[1] in ("focus", "premium", "newyear") and hmac.compare_digest(parts[4], _sign("own:" + msg)[:20]):
             out.add((parts[1], parts[3]))
     return out
 
 
 def _covers(owns, tier, topics):
     if tier not in TIER_PAID: return False   # free1115: 무료는 감정서를 열지 않아요
+    if tier == "newyear": return ("newyear", "-") in owns   # newyear1116: 신년운세는 따로 사는 상품(프리미엄과 별개)
     if ("premium", "-") in owns: return True        # 프리미엄을 산 사주는 주제 심층도 모두 열려요
     return tier == "focus" and ("focus", _topics_key(topics)) in owns
 
@@ -762,6 +767,8 @@ def api_tier(req: TierReq):
         raise HTTPException(400, str(e))
     if tier == "focus" and len(topics) != 2:
         raise HTTPException(400, "주제를 정확히 2개 골라 주세요")
+    if tier == "newyear" and not _ny_ready(p, now):
+        raise HTTPException(400, "이 사주의 토정 괘 풀이를 준비하고 있어요. 신년운세 감정서는 조금 뒤에 열려요")
     if tier != "focus":
         topics = []
     pt = None
@@ -810,3 +817,39 @@ def _tier_purchase(req):
         return {"ok": True, "unlock": _sign("unlock:" + req.rid), "own": own, "chart": chart, "mode": "dev"}
     # TODO(Play 결제): billing_todo_ko.md(출시 문서) — purchaseToken을 Play Developer API로 확인 → 사주키와 묶어 기록 → 소비(consume)
     raise HTTPException(402, "결제 연동을 준비 중이에요")
+
+
+# ------------------------------------------------------------------ newyear1116: 2027 신년운세 무료 화면
+def _ny_ready(p, now):
+    import tojeong as TJ
+    return TJ.reading(p.date, p.lunar, p.leap, NY.YEAR)["ready"]
+
+
+def _g(x):
+    return safe_html(JS.settle(GL.apply(x or "")))
+
+
+@router.post("/api/v2/newyear/free")
+def api_newyear_free(b: BirthIn):
+    """토정(전통 참고) + 사주 2027 요약 + 8개 주제 맛보기. 판정은 사주 별점이 정해요. 감정서 파일은 만들지 않아요."""
+    now = _now()
+    p = P(b, now)
+    with _GEN_LOCK:
+        try:
+            d = NY.free_data(p.args(), now)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        finally:
+            JB.apply("미정")
+    tj = d["tojeong"]
+    for k in ("line", "title"):
+        if tj.get(k): tj[k] = _g(tj[k])
+    out = {"year": d["year"], "gz": d["gz"], "ko": d["ko"], "age": d["age"], "star": d["star"], "verdict": d["verdict"],
+           "title": JS.settle(GL.apply(d["title"], terms=False)), "line": _g(d["line"]), "move": d["move"], "contract": d["contract"],
+           "daeun": d["daeun"], "tojeong": tj, "dm": d["dm"], "dm_ko": __import__("texts").STEM[d["dm"]]["ko"],
+           "strength": _g(d["strength"].split(",")[0]), "yong": d["yong"], "hee": d["hee"],
+           "topics": [{**t, "teaser": _g(t["teaser"])} for t in d["topics"]],
+           "who": ((p.name + "님") if p.name else "고객님"), "chart": p.chart_key(),
+           "offer": {**{k: TIERS["newyear"][k] for k in ("id", "price", "title", "pages")}, "ready": d["report_ready"]},
+           "focus_price": TIERS["focus"]["price"], "premium_price": TIERS["premium"]["price"]}
+    return clean(out)

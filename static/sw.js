@@ -1,8 +1,8 @@
 /* 손명리 서비스 워커: 앱 화면·손 인식 모델을 기기에 저장해 빠르게 열고, 오프라인에서도 첫 화면이 뜨게 함.
    개인 정보가 든 API 응답(/api/)과 감정서는 저장하지 않음. */
-const VER = "sonmyeongri-v14";   // free1115
+const VER = "sonmyeongri-v15";   // newyear1116 (free1115: v14)
 // nopalm1113: 손금 파일은 기본 저장 목록에서 뺌(PALM_ENABLED일 때 네트워크에서 받아 저장)
-const SHELL = ["/", "/static/m.css?v=11", "/static/m.js?v=10", "/static/fonts/pretendard-400.woff2", "/static/fonts/pretendard-600.woff2", "/static/fonts/notoserifkr-400.woff2", "/static/fonts/notoserifkr-700.woff2",
+const SHELL = ["/", "/static/m.css?v=12", "/static/m.js?v=11", "/static/fonts/pretendard-400.woff2", "/static/fonts/pretendard-600.woff2", "/static/fonts/notoserifkr-400.woff2", "/static/fonts/notoserifkr-700.woff2",
   "/manifest.webmanifest", "/static/icons/icon-192.png", "/static/icons/icon-512.png", "/privacy"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(VER).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VER).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

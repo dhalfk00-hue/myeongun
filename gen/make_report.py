@@ -49,6 +49,49 @@ def prepare(args, now):
     return c, rep, inp
 
 
+STAR_WORD = {5: "아주 좋음", 4: "좋음", 3: "보통", 2: "조심", 1: "크게 조심"}   # qa1116: 모든 주제·달 별점은 높을수록 좋아요(건강도 높을수록 탈이 적음)
+def dedupe_tables(html):
+    """qa1116: 한 표 안에서 앞 행에 이미 나온 문장은 뒤 행에서 빼요(같은 쪽에 같은 문장이 줄줄이 나오지 않게).
+    글자 덩어리 안의 두 번째 이후 문장만 빼서, '보완'·'조심' 같은 꼬리표 바로 뒤 문장은 남아요."""
+    def one(tm):
+        seen = set(); t = tm.group(0)
+        def seg(m):
+            parts = re.split(r"(?<=[.!?])(\s+)", m.group(1))
+            out = []; first = True
+            for x in parts:
+                if not x.strip(): out.append(x); continue
+                k = x.strip()
+                if not first and len(k) >= 10 and k in seen:
+                    if out and not out[-1].strip(): out.pop()
+                    continue
+                seen.add(k); out.append(x); first = False
+            return ">" + "".join(out) + "<"
+        t = re.sub(r">([^<>]+)<", seg, t)
+        lab = set()
+        def labd(m):   # 꼬리표+문장 짝(예: 보완 + 같은 문장)이 앞 행에 이미 있으면 짝째로 빼요
+            k = re.sub(r"<[^>]+>", "", m.group(0)).strip()
+            if k in lab: return ""
+            lab.add(k); return m.group(0)
+        def row(rm):
+            r = rm.group(0)
+            r2 = re.sub(r'\s*<b class="adv-[a-z]">[^<]{1,8}</b>\s*[^<]{10,}?[.!?](?=\s|<)', labd, r)
+            return r2 if re.sub(r"<[^>]+>|\s", "", r2) else r
+        return re.sub(r"<tr\b.*?</tr>", row, t, flags=re.S)
+    return re.sub(r"<table\b.*?</table>", one, html, flags=re.S)
+
+
+def star_words(html):
+    def rep(m):
+        n = len(m.group(1))
+        return f'<span class="snw">{m.group(0)}<span class="sw">({STAR_WORD[n]})</span></span>' if len(m.group(0)) == 5 and n in STAR_WORD else m.group(0)
+    return re.sub(r"(★+)(☆*)(?!<span class=\"sw\")", rep, html)
+# qa1116: 별이 있는 쪽의 꼬리말에 별점 범례를 붙여요(쪽 나눔이 끝난 뒤, PDF·앱 보기 모두)
+LEGEND_JS = r"""() => { document.querySelectorAll('.page').forEach(s => { const f = s.querySelector('.foot'); if (!f) return;
+  const o = f.querySelector('.slg'); if (o) o.remove(); const inn = s.querySelector('.in');
+  if (inn && inn.textContent.includes('★')) { const g = document.createElement('span'); g.className = 'slg';
+    g.textContent = '별점은 높을수록 좋아요 · ★5 아주 좋음 · ★4 좋음 · ★3 보통 · ★2 조심 · ★1 크게 조심'; f.insertBefore(g, f.firstChild); } }); }"""
+
+
 def finish(html, title="손명리 감정서"):
     """쪽 번호 · 조사 고치기 · 금지어 검사 → 완성 문서"""
     n = 0
@@ -58,6 +101,7 @@ def finish(html, title="손명리 감정서"):
     html = fix_josa(html)
     import gloss as GL   # gloss1116: 사주 용어 쉬운 풀이 · 한자는 한글 읽기와 함께
     html = settle(fix_josa(GL.apply(html)))   # josa1116: 풀이 괄호를 건너뛰고 앞 한글 낱말 받침에 맞춰 조사를 마지막으로 골라요
+    html = star_words(dedupe_tables(html))   # qa1116: 별점 옆에 좋음·보통·조심 말을 붙여요
     for bad in ("\ubc31\uc6b4", "\ub3c4\uc0ac", "\ucca0\ud559\uc6d0", "\ube14\ub85c\uadf8"):
         assert bad not in html, f"금지어 포함: {bad}"
     return f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=800, initial-scale=1"><style>html{{-webkit-text-size-adjust:100%;text-size-adjust:100%}}</style><title>{title}</title><link rel="stylesheet" href="style.css"></head><body>\n{html}\n</body></html>'
@@ -155,7 +199,7 @@ SPLIT_JS = r"""([idx, LIM]) => {
       ni.insertBefore(el, front());
     };
     let guard = 0;
-    while (meas(pg) > LIM && inEl.children.length > 2 && guard++ < 200) {
+    while (meas(pg) > LIM && (inEl.children.length > 2 || (inEl.lastElementChild && inEl.lastElementChild.tagName === 'TABLE' && inEl.lastElementChild.querySelectorAll('tr').length > 3)) && guard++ < 200) {   // qa1116: 한 쪽에 표 하나만 남아도 행 단위로 나눠요
       const last = inEl.lastElementChild;
       const rows = last.tagName === 'TABLE' ? [...last.querySelectorAll('tr')] : null;
       const lis = (!rows && last.querySelector) ? (last.tagName === 'UL' ? last : last.querySelector(':scope > ul')) : null;
@@ -167,6 +211,9 @@ SPLIT_JS = r"""([idx, LIM]) => {
         const tb2 = t2.querySelector('tbody');
         while (meas(pg) > LIM && last.querySelectorAll('tr').length > 2) { const rs = last.querySelectorAll('tr'); tb2.insertBefore(rs[rs.length - 1], tb2.children[1] || null); }
         if (meas(pg) > LIM) { put(last); }   // 그래도 넘치면 표 전체를 넘겨요(앞 조각과 합쳐요)
+        else if (last.querySelectorAll('tr').length <= 2 && inEl.children.length > 2) {   // qa1116: 머리줄+한 줄만 쪽 끝에 외톨이로 남지 않게 표 전체를 넘겨요
+          const rs = last.querySelectorAll('tr'); if (rs.length === 2) tb2.insertBefore(rs[1], tb2.children[1] || null); last.remove();
+        }
         continue;
       }
       if (lis && lis.children.length > 2) {   // 조언 목록은 항목 단위로
@@ -185,7 +232,7 @@ SPLIT_JS = r"""([idx, LIM]) => {
     // tier1115: '(이어서)' 이름은 이 쪽에 남은 마지막 큰 제목(없으면 이 쪽의 이어서 이름)
     const hs = [...inEl.children].filter(e => e.tagName === 'H2');
     const oc = inEl.querySelector(':scope > .sub.cont');
-    cont.textContent = (hs.length ? hs[hs.length - 1].textContent.replace(/^\d+/, '').trim() : (oc ? oc.textContent.replace(/ \(이어서\)$/, '') : '')) + ' (이어서)';
+    cont.textContent = (hs.length ? ((h) => { const k = h.cloneNode(true); k.querySelectorAll('.no').forEach(x => x.remove()); return k.textContent.trim(); })(hs[hs.length - 1]) : (oc ? oc.textContent.replace(/ \(이어서\)$/, '') : '')) + ' (이어서)';
     const f1 = cont.nextElementSibling;
     if (f1 && (f1.tagName === 'H2' || (f1.classList.contains('rule') && f1.nextElementSibling && f1.nextElementSibling.tagName === 'H2'))) {
       cont.remove(); if (f1.classList.contains('rule')) f1.remove();
@@ -215,6 +262,60 @@ TAIL_JS = r"""([LIM]) => {
 }"""
 
 
+# qa1116: 마지막 쪽에 끝맺음 상자만 덩그러니 남으면(45% 미만), 앞 쪽 끝 블록을 몇 개 넘겨 두 쪽을 고르게 채워요(쪽수는 그대로)
+BAL_JS = r"""([LIM]) => {
+  const meas = (s) => { const r = s.getBoundingClientRect(); let m = 0;
+    s.querySelectorAll('.in *').forEach(e => { const q = e.getBoundingClientRect(); if (q.height > 0) m = Math.max(m, q.bottom - r.top); }); return m; };
+  const ps = [...document.querySelectorAll('.page')]; const L = ps[ps.length - 1], P = ps[ps.length - 2];
+  if (!L || !P || !L.classList.contains('flow') || !P.classList.contains('flow')) return 0;
+  const li = L.querySelector(':scope > .in'), pi = P.querySelector(':scope > .in'); if (!li || !pi || pi.dataset.z || li.dataset.z) return 0;
+  const cont = li.querySelector(':scope > .sub.cont'); if (!cont || meas(L) > 0.45 * LIM) return 0;
+  const lone = (e) => e && (/^H[23]$/.test(e.tagName) || e.classList.contains('sub') || e.classList.contains('rule'));
+  let n = 0;
+  for (let g = 0; g < 12; g++) {
+    const e = pi.lastElementChild; if (!e || e.tagName === 'H2' || e.classList.contains('cont') || pi.children.length < 4) break;
+    const grp = [e]; let q = e.previousElementSibling; while (q && lone(q) && q.tagName !== 'H2') { grp.unshift(q); q = q.previousElementSibling; }
+    if (pi.children.length - grp.length < 3) break;
+    const at = cont.nextSibling; grp.forEach(x => li.insertBefore(x, at));
+    if (meas(L) > LIM - 5 || meas(L) > meas(P)) { grp.forEach(x => pi.appendChild(x)); break; }
+    n++;
+  }
+  return n;
+}"""
+
+
+# qa2: 쪽을 나눈 뒤, 한 쪽 안에서 이미 나온 문장(12자 이상)이 다른 표·목록에 또 나오면 뒤의 것을 빼요(칸이 비면 남겨요)
+PDEDUP_JS = r"""() => {
+  const norm = (h) => { const d = document.createElement('div'); d.innerHTML = h; return d.textContent.replace(/\s+/g, ' ').trim(); };
+  const units = (html) => { const out = []; let cur = '', depth = 0; const re = /(<[^>]+>)|([^<]+)/g; let m;
+    while ((m = re.exec(html))) {
+      if (m[1]) { const t = m[1]; if (/^<\//.test(t)) depth--; else if (!/\/>$/.test(t) && !/^<(br|img|hr|wbr)\b/i.test(t)) depth++; cur += t; continue; }
+      let txt = m[2], k;
+      while (depth <= 0 && (k = txt.search(/[.!?](\s+|$)/)) >= 0) { const e = k + 1 + (txt.slice(k + 1).match(/^\s*/)[0].length); cur += txt.slice(0, e); out.push(cur); cur = ''; txt = txt.slice(e); if (!txt) break; }
+      cur += txt;
+    }
+    if (cur) out.push(cur); return out; };
+  let removed = 0;
+  document.querySelectorAll('.page').forEach(pg => {
+    if (pg.classList.contains('cover')) return;
+    const inn = pg.querySelector(':scope > .in'); if (!inn) return;
+    const seen = new Set();
+    const els = [...inn.querySelectorAll('td, li, p, .box.dark')].filter(e => e.matches('.box.dark') || (!e.querySelector('td, li, p') && !e.closest('.box.dark, .gloss-guide, h2, h3')));
+    els.forEach(el => {
+      const us = units(el.innerHTML); const keep = [];
+      if (el.matches('.box.dark')) { us.forEach(u => { const t = norm(u); const key = t.replace(/^(조심|보완|추천|주의)\s*/, ''); if (t.length >= 12) { seen.add(t); if (key.length >= 12) seen.add(key); } }); return; }   // 요약 상자는 지우지 않고 기준으로만 써요
+      us.forEach(u => { const t = norm(u); const key = t.replace(/^(조심|보완|추천|주의)\s*/, '');
+        if (t.length >= 12 && /[.!?]$/.test(t) && (seen.has(t) || (key.length >= 12 && seen.has(key)))) { removed++; return; }
+        keep.push(u); if (t.length >= 12) { seen.add(t); if (key.length >= 12) seen.add(key); } });
+      if (keep.length === us.length) return;
+      if (!keep.some(u => norm(u))) { if (el.tagName === 'LI' && el.parentElement && el.parentElement.children.length > 1) { el.remove(); return; } return; }
+      el.innerHTML = keep.join('');
+    });
+  });
+  return removed;
+}"""
+
+
 # 앱 화면(HTML 보기)에서도 PDF와 같은 쪽 나누기·축소를 브라우저에서 해 주는 스크립트 (report_api가 보기 응답에만 붙여요)
 # ui1115: PDF와 같은 고정 좌표계. 페이지 측정 중 바깥 화면 축소를 하지 않아요.
 VIEW_FIT_JS = ("<script>(()=>{const LIM=" + str(LIMIT) + ",SPL=" + str(SPLIT_AT) + ",ZMIN=" + str(ZOOM_MIN) + ";"
@@ -223,9 +324,9 @@ VIEW_FIT_JS = ("<script>(()=>{const LIM=" + str(LIMIT) + ",SPL=" + str(SPLIT_AT)
                "const st=document.createElement('style');st.textContent='@media screen{.page{height:auto!important;min-height:297mm;overflow:visible!important}}';document.head.appendChild(st);"   # ui1115: 화면에서는 어떤 경우에도 내용을 자르지 않고 종이가 늘어나요(PDF는 그대로)
                "let busy=false;const go=()=>{if(busy)return;busy=true;"
                "for(let k=0;k<120;k++){const ps=[...document.querySelectorAll('.page')];const big=ps.map((s,i)=>[i,meas(s),s.classList.contains('flow')&&!s.classList.contains('lite')]).filter(x=>x[1]>(x[2]?LIM:SPL)).map(x=>x[0]);if(!big.length)break;split([big,LIM]);}"
-               "(" + TAIL_JS + ")([LIM]);"
+               "(" + TAIL_JS + ")([LIM]);(" + BAL_JS + ")([LIM]);(" + PDEDUP_JS + ")();"
                "for(let k=0;k<8;k++){document.querySelectorAll('.page').forEach(s=>{const h=meas(s);if(h>LIM){const el=s.querySelector('.in');const z0=parseFloat(el.dataset.z||'1');const z=Math.max(ZMIN,Math.min(z0-0.02,z0*1040/h));el.dataset.z=z;el.style.zoom=z;}});}"
-               "document.documentElement.dataset.fitReady='1';busy=false;};"
+               "(" + LEGEND_JS + ")();document.documentElement.dataset.fitReady='1';busy=false;};"
                "const fonts=document.fonts?document.fonts.ready:Promise.resolve();"
                "const load=document.readyState==='complete'?Promise.resolve():new Promise(r=>window.addEventListener('load',r,{once:true}));"
                "Promise.all([fonts,load]).then(()=>requestAnimationFrame(()=>requestAnimationFrame(go)));"
@@ -254,12 +355,15 @@ async def render(src, out, fit=True):
                 ov = await pg.evaluate(js)
                 flow = await pg.evaluate(FLOW_JS)
             if await pg.evaluate(TAIL_JS, [LIMIT]): ov = await pg.evaluate(js)
+            if await pg.evaluate(BAL_JS, [LIMIT]): ov = await pg.evaluate(js)
+            render.pdedup = await pg.evaluate(PDEDUP_JS); ov = await pg.evaluate(js)
         for it in range(8):   # 남은 넘침은 비율만큼 축소(하한 ZOOM_MIN)
             bad = [(i, h) for i, h in enumerate(ov) if h > LIMIT]
             if not bad or not fit: break
             await pg.evaluate("""([bad,zmin])=>{const ps=[...document.querySelectorAll('.page')];bad.forEach(([i,h])=>{const el=ps[i].querySelector('.in');const z0=parseFloat(el.dataset.z||'1');const z=Math.max(zmin,Math.min(z0-0.02,z0*1040/h));el.dataset.z=z;el.style.zoom=z;});}""", [bad, ZOOM_MIN])
             ov = await pg.evaluate(js)
         render.zooms = await pg.evaluate("""[...document.querySelectorAll('.page')].map(s=>{const e=s.querySelector('.in');return e?parseFloat(e.dataset.z||'1'):1})""")
+        await pg.evaluate(LEGEND_JS)
         await pg.pdf(path=out, format="A4", print_background=True, prefer_css_page_size=True)
         await b.close()
         return ov
@@ -279,7 +383,7 @@ def main():
                     help="직업 상황 (기본 미정 = 직장·사업 모두 읽히는 중립 문장)")
     ap.add_argument("--time-rule", default="경도", choices=["경도", "30분"],
                     help="시주 시각 보정: 경도(기본, 출생지 경도로 지방평균태양시) / 30분(흔한 만세력 관례, 표준시 −30분)")
-    ap.add_argument("--tier", choices=["free", "focus", "premium"], help="tier1115: 등급별 감정서 (free 기본 · focus 2,900원 주제 2개 · premium 9,900원 전체). 빼면 기존 종합 감정서")
+    ap.add_argument("--tier", choices=["free", "focus", "premium", "newyear"], help="tier1115: 등급별 감정서 (free 기본 · focus 2,900원 주제 2개 · premium 9,900원 전체 · newyear1116: 2027 신년운세 4,900원). 빼면 기존 종합 감정서")
     ap.add_argument("--topics", help="focus 주제 2개: 돈,직업,사업,결혼,이사,궁합,건강,자녀 (영문 money,job,biz,love,move,gunghap,health,kids도 돼요)")
     for k in ("name", "gender", "date", "time", "place"):
         ap.add_argument(f"--partner-{k}", help="궁합 상대 " + k)

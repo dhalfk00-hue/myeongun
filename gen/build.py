@@ -17,6 +17,11 @@ def esc(s): return html.escape(str(s))
 def elsp(ch): 
     e = STEM_ELK.get(ch) or BR_ELK.get(ch)
     return f'<span class="el-{e}">{ch}</span>'
+def cov_cell(ch):   # cover1116: 표지 기둥 칸 — 큰 한글 한 줄 + (한자·뜻) 작은 한 줄
+    e = STEM_ELK.get(ch) or BR_ELK.get(ch)
+    return f'<div class="cc el-{e}"><b>{_COV_KO.get(ch, ch)}</b><i>({ch}·{_COV_EL.get(e, "")})</i></div>'
+_COV_KO = dict(zip("甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥", "갑을병정무기경신임계자축인묘진사오미신유술해"))
+_COV_EL = {"목": "나무", "화": "불", "토": "흙", "금": "쇠", "수": "물"}
 def stars(n): return "★" * n + "☆" * (5 - n)
 def ko(gz): return S.gz_ko(gz)
 def el_full(e): return f"{e}({EL_HAN[e]})"
@@ -305,11 +310,11 @@ class Report:
         pillars = ""
         for n, lb in (("시", "시주"), ("일", "일주 · 나"), ("월", "월주"), ("년", "년주")):
             if n not in P or (n == "시" and not c.time_known):
-                pillars += f'<div class="pl"><div class="lb">{lb}</div><div class="ch"><span>?</span><span>?</span></div><div class="tg">시간 미상</div></div>'
+                pillars += f'<div class="pl"><div class="lb">{lb}</div><div class="ch"><div class="cc"><b>?</b><i>&#160;</i></div><div class="cc"><b>?</b><i>&#160;</i></div></div><div class="tg">시간 미상</div></div>'
                 continue
             p = P[n]; gz = p["gz"]
             tg = "일간 · " + p["branch_tengod"] if n == "일" else f'{p["stem_tengod"]} · {p["branch_tengod"]}'
-            pillars += f'<div class="pl{" me" if n == "일" else ""}"><div class="lb">{lb}</div><div class="ch">{elsp(gz[0])}{elsp(gz[1])}</div><div class="tg">{tg}</div></div>'
+            pillars += f'<div class="pl{" me" if n == "일" else ""}"><div class="lb">{lb}</div><div class="ch">{cov_cell(gz[0])}{cov_cell(gz[1])}</div><div class="tg">{tg}</div></div>'
         k = self.key5(palm)
         ks = "".join(f'<div class="k"><div class="n">{i+1}</div><div class="t"><b>{t}</b>{d.replace("<b>", "<strong>").replace("</b>", "</strong>")}</div></div>' for i, (t, d) in enumerate(k))
         title = "사주 × 손금 교차 감정서" if palm else "사주 종합 감정서"
@@ -317,7 +322,7 @@ class Report:
  <div class="brand"><div class="seal">命</div><div class="name">손명리</div><div class="en">SONMYEONGRI · SAJU{' &amp; PALM' if palm else ''}</div></div>
  <div class="ctitle">{title}</div>
  <div class="cmeta">{esc(self.who)} · {gtxt}{(' · ' + JB.label()) if JB.label() else ''} · {esc(bdate)} · {esc(inp.get("place_label", ""))} 출생</div>
- <div class="pillars">{pillars}</div>
+ <div class="pillars no-gloss">{pillars}</div>
  <div class="serif" style="text-align:center;color:#e9c97c;font-size:12.5pt;letter-spacing:0.18em;margin-bottom:1mm">한눈에 보는 핵심 5가지</div>
  <div class="key5">{ks}</div>
 </div><div class="foot">SONMYEONGRI · __PG__</div></section>'''

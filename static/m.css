@@ -471,3 +471,52 @@ html.palm-on [data-nopalm]{display:none!important}
 .tcard.free .fup li{display:grid;grid-template-columns:62px minmax(0,1fr);gap:8px;font-size:13px;line-height:1.6;color:var(--ink2)}
 .tcard.free .fup li em{font-style:normal;font-weight:600;color:var(--gold-hi);white-space:nowrap}
 .tcard.free .fup .mini{margin:0 0 12px}
+
+/* newyear1116: 2027 신년운세 화면(승인 시안 newyear_full 색·배치) — 밝은 종이 톤 카드 */
+.ny{margin:4px 0 8px;color:#2a2a26}
+.ny-hd{background:#2f3b33;color:#f6f1e7;border-radius:14px;padding:16px 16px 14px;margin-bottom:12px}
+.ny-hd b{display:block;font-size:19px;font-family:var(--serif);letter-spacing:.02em}
+.ny-hd span{display:block;font-size:12.5px;opacity:.85;margin-top:4px}
+.ny-c{background:#f6f1e7;border-radius:14px;padding:14px;margin-bottom:12px;font-size:14px;line-height:1.6}
+.ny-c p{margin:6px 0}
+.ny-c .sm{font-size:13px;color:#555}
+.ny .ny-tg{display:flex;gap:6px;margin-bottom:6px}
+.ny .ny-tg span{background:#e9e0cc;color:#4a4436;font-size:11.5px;border-radius:99px;padding:2px 9px}
+.ny .ny-tg .tr{background:#2f3b33;color:#f6f1e7}
+.ny .gw{display:flex;align-items:center;gap:14px;margin:4px 0 6px}
+.ny .gw b{font-size:30px;font-family:var(--serif);letter-spacing:.06em;color:#2f3b33}
+.ny .gw span{font-size:12.5px;color:#555;line-height:1.5}
+.ny .one b{margin-right:4px}
+.ny .cf{background:#f3dcd6;border-radius:8px;padding:6px 9px;font-size:12.5px}
+.ny .nt{font-size:12px;color:#6b665b}
+.ny .mg{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:8px}
+.ny .mg .m{background:#efe9dc;border-radius:7px;text-align:center;font-size:12px;padding:6px 0;color:#4a4436}
+.ny .mg .m.g{background:#dfe9dc}.ny .mg .m.b{background:#f3dcd6}
+.ny .lg{font-size:11.5px;color:#6b665b;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.ny .lg i{display:inline-block;width:10px;height:10px;border-radius:3px}.ny .lg i.g{background:#dfe9dc}.ny .lg i.b{background:#f3dcd6;margin-left:6px}
+.ny .nst{color:#b8862f;letter-spacing:.02em}.ny .nst i{font-style:normal;color:#cfc6b2}
+.ny-s{color:var(--ink);font-size:15px;margin:16px 2px 8px}.ny-s span{font-size:12.5px;color:var(--sub)}
+.ny-g{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ny-t{background:#f6f1e7;border:0;border-radius:14px;padding:12px;text-align:left;color:#2a2a26;font:inherit;display:flex;flex-direction:column;cursor:pointer}
+.ny-t .th{display:flex;justify-content:space-between;align-items:baseline;gap:4px}
+.ny-t .th b{font-size:15px}.ny-t .th em{font-style:normal;font-size:11.5px;color:#b8862f}
+.ny-t p{font-size:12.5px;line-height:1.5;color:#4a4436;margin:6px 0 8px;flex:1}
+.ny-t .go{font-size:12px;color:#2f3b33;font-weight:600}
+.ny-cta{display:block;width:100%;margin:16px 0 8px;background:#2f3b33;color:#f6f1e7;border:0;border-radius:14px;padding:16px;font:inherit;cursor:pointer}
+.ny-cta b{display:block;font-size:16px}.ny-cta span{display:block;font-size:12.5px;opacity:.85;margin-top:4px}
+.ny-cta[disabled]{opacity:.55;cursor:default}
+.ny-f{font-size:12.5px;color:var(--sub);margin:4px 2px}
+.ny-src{font-size:11.5px;color:var(--mute);margin:6px 2px 14px}
+
+/* qa1116: 별점 말·범례 */
+.stars .sw{margin-left:8px;font-size:12px;color:var(--gold);white-space:nowrap;align-self:center;letter-spacing:0}
+.stars{align-items:center}
+.ny .nst .sw{font-style:normal;font-size:.82em;color:#9a7a3e;margin-left:4px;white-space:nowrap;letter-spacing:0}
+.slg{font-size:11.5px;color:#9a8a68;margin:10px 0 0;line-height:1.5;letter-spacing:0}
+.ny .slg{grid-column:1/-1;margin:6px 2px 4px}
+.ny-t .th b{white-space:nowrap}.ny-t .th .nst{text-align:right;white-space:nowrap}.ny-t .th .nst .sw{display:block;margin:1px 0 0;line-height:1.2}
+b.adv-c{color:#e7a48c}b.adv-s{color:#a9cfa9}b.adv-x{color:#d6b97c}
+/* qa2: 주제 카드 — 제목 한 줄, 그 아래 별점과 말을 한 줄로 나란히(모든 카드 같은 모양) */
+.ny-t .th{flex-direction:column;align-items:flex-start;gap:2px}
+.ny-t .th .nst{text-align:left;white-space:nowrap}
+.ny-t .th .nst .sw{display:inline;margin:0 0 0 5px;line-height:inherit}

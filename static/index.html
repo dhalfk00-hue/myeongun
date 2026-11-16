@@ -16,7 +16,7 @@
 <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
 <link rel="preload" href="/static/fonts/notoserifkr-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/static/fonts/pretendard-400.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/static/m.css?v=11">
+<link rel="stylesheet" href="/static/m.css?v=12">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -68,9 +68,10 @@
     <div class="menu">
       <button class="mcard main rv" style="--i:6" data-go="saju" data-nopalm><span class="ic">命</span><div><b>사주 풀이<span class="new"><span data-fy="y">2027</span> 운세</span></b><p>타고난 기운 · 재물 그릇 · 10년 흐름 · 올해와 내년</p></div><svg class="i go"><use href="#i-chev"/></svg></button>
       <button class="mcard main rv" style="--i:6" data-go="saju" data-palm><span class="ic">命<small>手</small></span><div><b>사주 × 손금 교차 풀이<span class="new">함께 보기</span></b><p>재운선 × 재물운 · 6대 선 × 사주 · <span data-fy="y">2027</span>년 운세까지 한 장에</p></div><svg class="i go"><use href="#i-chev"/></svg></button>
+      <button class="mcard rv" style="--i:7" data-go="newyear"><span class="ic">歲</span><div><b><span data-fy="y">2027</span> 신년운세<span class="new">토정비결</span></b><p>토정비결 한 해 괘 + 사주 요약 · 주제 8가지 맛보기 무료</p></div><svg class="i go"><use href="#i-chev"/></svg></button>
       <button class="mcard rv" style="--i:7" data-go="gunghap"><span class="ic">合</span><div><b>결혼 궁합</b><p>두 사람의 끌림과 조심할 자리, 함께 계획하기 좋은 해</p></div><svg class="i go"><use href="#i-chev"/></svg></button>
     </div>
-    <div class="prem rv" style="--i:9" data-nopalm><span class="doc">命</span><div><b>사주 요약 무료 · 주제 2개 2,900원 · 전체 9,900원</b><p>무료는 화면 요약까지예요. 돈·직업·사업·결혼·이사·궁합·건강·자녀 중 2개를 9~10쪽으로, 또는 전체를 22~23쪽으로 풀어요 · 주제 심층을 산 사주는 차액 7,000원으로 전체 · 감정서는 PDF로 소장</p></div></div>
+    <div class="prem rv" style="--i:9" data-nopalm><span class="doc">命</span><div><b>사주 요약 무료 · 주제 2개 2,900원 · 전체 9,900원</b><p>무료는 화면 요약까지예요. 돈·직업·사업·결혼·이사·궁합·건강·자녀 중 2개를 9~10쪽으로, 또는 전체를 24~25쪽으로 풀어요 · 주제 심층을 산 사주는 차액 7,000원으로 전체 · 감정서는 PDF로 소장</p></div></div>
     <div class="prem rv" style="--i:9" data-palm><span class="doc">命</span><div><b>사주 × 손금 교차 감정서 13쪽</b><p>6대 선 × 사주 · 돈 들어오는 시기 · 대운 10년 · 월별 운세 · 개운법, PDF로 소장</p></div></div>
     <div class="trust rv" style="--i:10">
       <span data-palm><svg class="i"><use href="#i-shield"/></svg>손 사진은<br>폰 밖으로 안 나가요</span>
@@ -83,15 +84,17 @@
 
   <section class="view" id="v-saju"></section>
   <section class="view" id="v-gunghap"></section>
+  <section class="view" id="v-newyear"></section>
 </div>
 
 <nav class="tabbar"><div class="in">
   <button data-go="home" class="on"><svg class="i"><use href="#i-home"/></svg>홈</button>
   <button data-go="saju"><svg class="i"><use href="#i-hand" data-palm/><use href="#i-moon" data-nopalm/></svg><span data-palm>사주+손금</span><span data-nopalm>사주</span></button>
+  <button data-go="newyear"><svg class="i"><use href="#i-cal"/></svg>신년</button>
   <button data-go="gunghap"><svg class="i"><use href="#i-rings"/></svg>궁합</button>
 </div></nav>
 
-<script src="/static/m.js?v=10"></script>
+<script src="/static/m.js?v=11"></script>
 <script>
   // nopalm1113: 손금 스크립트는 PALM_ENABLED일 때만 불러요(손 인식 모델도 안 받음)
   if (window.PALM_ENABLED) ["palm_detect.js?v=8", "palm_guide.js?v=8", "palm_flow.js?v=9"].forEach(f => document.write('<script src="/static/' + f + '"><\/script>'));

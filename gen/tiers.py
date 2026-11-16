@@ -18,8 +18,8 @@ import topics as TP
 from texts import *
 from josa import josa, particle
 
-PRICE = {"free": 0, "focus": 2900, "premium": 9900}
-PRODUCT = {"free": None, "focus": "focus_2900", "premium": "premium_9900"}
+PRICE = {"free": 0, "focus": 2900, "premium": 9900, "newyear": 4900}
+PRODUCT = {"free": None, "focus": "focus_2900", "premium": "premium_9900", "newyear": "newyear_4900"}
 PREMIUM_ORDER = ("money", "job", "biz", "love", "move", "health", "kids")
 _HEAD = re.compile(r'^\s*<section class="page[^"]*"><div class="in">\s*', re.S)
 _TAIL = re.compile(r'\s*</div><div class="foot">[^<]*</div></section>\s*$', re.S)
@@ -129,6 +129,9 @@ def gunghap_section(rep, args, now):
 def assemble_tier(args, now):
     import make_report as MR
     tier = args.tier
+    if tier == "newyear":   # newyear1116: 2027 신년운세는 따로 조립해요
+        import newyear as NY
+        return NY.assemble(args, now)
     if tier not in PRICE: raise ValueError("등급은 free·focus·premium 중 하나예요")
     topics = TP.parse_topics(getattr(args, "topics", None) or "")
     if tier == "focus":

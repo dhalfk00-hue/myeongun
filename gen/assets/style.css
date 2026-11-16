@@ -98,3 +98,18 @@ span.adv{display:block;margin-top:0.6mm;font-size:0.95em}
 .gtable td, .gtable th { padding:1.1mm 1.6mm; vertical-align:top; }
 .gtable td:first-child { white-space:nowrap; }
 .gtable { font-size:9pt; line-height:1.35; } .gtable td, .gtable th { padding:0.9mm 1.6mm; } .gtable td.tiny { color:#5a4c38; line-height:1.35; }
+
+/* cover1116: 표지 기둥 칸 — 네 칸 같은 높이·같은 기준선, 줄바꿈 없음 */
+.pillars.no-gloss .pl { width:27mm; }
+.pillars.no-gloss .pl .ch { padding:1.4mm 0; line-height:1; }
+.pillars.no-gloss .cc { display:flex; flex-direction:column; align-items:center; justify-content:center; height:17mm; white-space:nowrap; overflow:hidden; }
+.pillars.no-gloss .cc b { font-weight:500; font-size:21pt; line-height:1.05; white-space:nowrap; }
+.pillars.no-gloss .cc i { font-style:normal; font-family:"Noto Sans CJK KR",sans-serif; font-size:10.5pt; line-height:1.2; margin-top:1mm; letter-spacing:0; white-space:nowrap; }
+.pillars.no-gloss .pl .tg { white-space:nowrap; }
+
+/* qa1116: 별점 말·범례 */
+.sw { font-size:0.78em; letter-spacing:0; margin-left:0.6mm; font-weight:600; color:inherit; white-space:nowrap; }
+.foot .slg { display:block; letter-spacing:0; font-size:7.4pt; color:#8a7448; margin-bottom:0.8mm; }
+td .sw { display:block; margin-left:0; font-size:0.85em; line-height:1.2; }
+.snw { white-space:nowrap; }
+td .snw { white-space:normal; }

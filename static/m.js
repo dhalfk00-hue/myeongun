@@ -12,7 +12,7 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fyFill); else fyFill();
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const SW = { 5: "아주 좋음", 4: "좋음", 3: "보통", 2: "조심", 1: "크게 조심" };   // qa1116: 별점 옆에 말을 함께 적어요(높을수록 좋음)
-  const SLG = `<p class="slg">별점은 높을수록 좋아요 · ★5 아주 좋음 · ★4 좋음 · ★3 보통 · ★2 조심 · ★1 크게 조심</p>`;
+  const SLG = `<p class="slg"><span class="nw">별점은 높을수록 좋아요</span> · <span class="nw">★5 아주 좋음</span> · <span class="nw">★4 좋음</span> · <span class="nw">★3 보통</span> · <span class="nw">★2 조심</span> · <span class="nw">★1 크게 조심</span></p>`;
   const stars = n => `<div class="stars" aria-label="5점 중 ${n}점 ${SW[n] || ""}">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= n ? "on" : ""}"></i>`).join("")}${SW[n] ? `<span class="sw">★${n} ${SW[n]}</span>` : ""}</div>`;
   const ic = (n, c = "i") => `<svg class="${c}"><use href="#i-${n}"/></svg>`;
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -137,11 +137,11 @@
     const poly = r => K.map((_, i) => pt(i, r).map(v => v.toFixed(1)).join(",")).join(" ");
     const val = K.map((k, i) => pt(i, R * (0.1 + 0.9 * (e[k] || 0) / mx)));
     const svg = `<svg viewBox="0 0 168 168" aria-hidden="true">
-      ${[1 / 3, 2 / 3, 1].map(f => `<polygon points="${poly(R * f)}" fill="none" stroke="rgba(214,185,124,${f === 1 ? .28 : .12})" stroke-width=".7"/>`).join("")}
-      ${K.map((_, i) => { const [x, y] = pt(i, R); return `<line x1="${C}" y1="${C}" x2="${x}" y2="${y}" stroke="rgba(214,185,124,.12)" stroke-width=".6"/>`; }).join("")}
-      <polygon points="${val.map(p => p.map(v => v.toFixed(1)).join(",")).join(" ")}" fill="rgba(214,185,124,.16)" stroke="#d6b97c" stroke-width="1.1" stroke-linejoin="round"/>
+      ${[1 / 3, 2 / 3, 1].map(f => `<polygon points="${poly(R * f)}" fill="none" stroke="rgba(122,86,26,${f === 1 ? .32 : .14})" stroke-width=".7"/>`).join("")}
+      ${K.map((_, i) => { const [x, y] = pt(i, R); return `<line x1="${C}" y1="${C}" x2="${x}" y2="${y}" stroke="rgba(122,86,26,.14)" stroke-width=".6"/>`; }).join("")}
+      <polygon points="${val.map(p => p.map(v => v.toFixed(1)).join(",")).join(" ")}" fill="rgba(214,185,124,.28)" stroke="#8a6420" stroke-width="1.2" stroke-linejoin="round"/>
       ${K.map((k, i) => { const [x, y] = val[i]; return `<circle cx="${x}" cy="${y}" r="2.6" fill="${ELC[k]}"/>`; }).join("")}
-      ${K.map((k, i) => { const [x, y] = pt(i, R + 15); return `<text x="${x}" y="${y + 4.5}" text-anchor="middle" font-family="MW Serif,serif" font-size="13" fill="${(e[k] || 0) ? "#ede6d6" : "#6c695f"}">${HAN[k]}</text>`; }).join("")}
+      ${K.map((k, i) => { const [x, y] = pt(i, R + 15); return `<text x="${x}" y="${y + 4.5}" text-anchor="middle" font-family="MW Serif,serif" font-size="13" fill="${(e[k] || 0) ? "#2a2420" : "#6e6252"}">${HAN[k]}</text>`; }).join("")}
     </svg>`;
     const list = `<ul>${K.map(k => `<li class="${e[k] ? "" : "z"}" style="--c:${ELC[k]}"><i></i>${EL[k]}<b>${e[k] ?? 0}</b></li>`).join("")}</ul>`;
     const top = K.filter(k => (e[k] || 0) === Math.max(...K.map(x => e[x] || 0))), zero = K.filter(k => !e[k]);
@@ -152,18 +152,18 @@
   function gaugeHTML(n, label) {
     const L = Math.PI * 96, v = L * n / 5, ang = Math.PI * (1 - n / 5), ex = 114 + 96 * Math.cos(ang), ey = 108 - 96 * Math.sin(ang);
     const ticks = [0, 1, 2, 3, 4, 5].map(i => { const a = Math.PI * (1 - i / 5), c = Math.cos(a), s = Math.sin(a);
-      return `<line x1="${114 + 104 * c}" y1="${108 - 104 * s}" x2="${114 + 109 * c}" y2="${108 - 109 * s}" stroke="rgba(214,185,124,.45)" stroke-width="1"/>`; }).join("");
-    return `<div class="gauge"><svg viewBox="0 0 228 118" aria-hidden="true"><defs><linearGradient id="gg${n}" x1="0" x2="1"><stop offset="0" stop-color="#9c7f48"/><stop offset=".6" stop-color="#e2c68c"/><stop offset="1" stop-color="#f6e7bf"/></linearGradient></defs>
-      <path d="M18 108A96 96 0 0 1 210 108" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="2"/>${ticks}
+      return `<line x1="${114 + 104 * c}" y1="${108 - 104 * s}" x2="${114 + 109 * c}" y2="${108 - 109 * s}" stroke="rgba(122,86,26,.45)" stroke-width="1"/>`; }).join("");
+    return `<div class="gauge"><svg viewBox="0 0 228 118" aria-hidden="true"><defs><linearGradient id="gg${n}" x1="0" x2="1"><stop offset="0" stop-color="#c9a764"/><stop offset=".6" stop-color="#a27a34"/><stop offset="1" stop-color="#7a561a"/></linearGradient></defs>
+      <path d="M18 108A96 96 0 0 1 210 108" fill="none" stroke="rgba(70,50,20,.12)" stroke-width="2"/>${ticks}
       <path class="garc" d="M18 108A96 96 0 0 1 210 108" fill="none" stroke="url(#gg${n})" stroke-width="3" stroke-linecap="round" style="stroke-dasharray:${v.toFixed(1)} ${L.toFixed(1)};--v:${v.toFixed(1)}"/>
-      ${n ? `<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="4.5" fill="#f6e7bf" style="filter:drop-shadow(0 0 6px #d6b97c)"/>` : ""}</svg>
+      ${n ? `<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="4.5" fill="#8a6420" style="filter:drop-shadow(0 0 4px rgba(180,130,50,.6))"/>` : ""}</svg>
       <div class="v"><b class="gt">${n}</b><small>/ 5${SW[n] ? " · " + SW[n] : ""}</small><span>${label || "운세 지수"}</span></div></div>`;
   }
   const ORB = (() => { const B = "子丑寅卯辰巳午未申酉戌亥"; return `<svg viewBox="0 0 150 150"><g class="r1">${[...B].map((c, i) => { const a = i * 30 * Math.PI / 180;
-    return `<text x="${75 + 62 * Math.sin(a)}" y="${75 - 62 * Math.cos(a) + 4}" text-anchor="middle" font-family="MW Serif,serif" font-size="10" fill="#d6b97c" opacity=".75">${c}</text>`; }).join("")}</g>
-    <circle cx="75" cy="75" r="72" fill="none" stroke="rgba(214,185,124,.25)" stroke-width=".6"/>
-    <g class="r2"><circle cx="75" cy="75" r="50" fill="none" stroke="#d6b97c" stroke-width=".8" stroke-dasharray="1 5.5" opacity=".8"/><circle cx="75" cy="25" r="2" fill="#f6e7bf"/></g>
-    <circle cx="75" cy="75" r="40" fill="rgba(214,185,124,.06)" stroke="rgba(214,185,124,.3)" stroke-width=".6"/></svg>`; })();
+    return `<text x="${75 + 62 * Math.sin(a)}" y="${75 - 62 * Math.cos(a) + 4}" text-anchor="middle" font-family="MW Serif,serif" font-size="10" fill="#8a6420" opacity=".8">${c}</text>`; }).join("")}</g>
+    <circle cx="75" cy="75" r="72" fill="none" stroke="rgba(122,86,26,.28)" stroke-width=".6"/>
+    <g class="r2"><circle cx="75" cy="75" r="50" fill="none" stroke="#8a6420" stroke-width=".8" stroke-dasharray="1 5.5" opacity=".8"/><circle cx="75" cy="25" r="2" fill="#8a6420"/></g>
+    <circle cx="75" cy="75" r="40" fill="rgba(214,185,124,.14)" stroke="rgba(122,86,26,.3)" stroke-width=".6"/></svg>`; })();
   const loadingHTML = (t, s = "", ch = "命") => `<div class="loading"><div class="orb">${ORB}<b class="gt">${ch}</b></div><div class="t" data-lt>${t}</div><div class="s">${s}</div></div>`;
   async function withLoading(el, steps, p, ch, min = 1300) {
     el.innerHTML = loadingHTML(steps[0], "손명리 · 만세력", ch); window.scrollTo({ top: 0 });
@@ -546,7 +546,7 @@
         <button type="button" class="ny-t ny-t-pay rv" id="ny-pm"><div class="th"><b>프리미엄</b><em>${ownPm ? "열림" : won(d.premium_price)}</em></div>
           <p>평생·10년 흐름까지<br>${esc(pm.pages || "24~25쪽")}</p>
           <span class="go">${ownPm ? "감정서 보기 →" : "감정서 열기 →"}</span></button></div>
-      <p class="slg">별점은 높을수록 좋아요(건강도 높을수록 탈이 적어요) · ★5 아주 좋음 · ★4 좋음 · ★3 보통 · ★2 조심 · ★1 크게 조심</p>
+      <p class="slg">별점은 높을수록 좋아요(건강도 높을수록 탈이 적어요) · <span class="nw">★5 아주 좋음</span> · <span class="nw">★4 좋음</span> · <span class="nw">★3 보통</span> · <span class="nw">★2 조심</span> · <span class="nw">★1 크게 조심</span></p>
       <p class="ny-f">주제 칸을 누르면 주제 2개를 골라 심층(${won(d.focus_price)})으로 볼 수 있어요.</p>`;
   }
   function nyResult(d, b) {
@@ -609,9 +609,9 @@
   }
   function ringHTML(score) {
     const C = 2 * Math.PI * 58, off = C * (1 - score / 100);
-    return `<div class="score"><svg viewBox="0 0 128 128" aria-hidden="true"><defs><linearGradient id="sg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#f6e7bf"/><stop offset=".5" stop-color="#d6b97c"/><stop offset="1" stop-color="#9c7f48"/></linearGradient></defs>
-      <circle cx="64" cy="64" r="58" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="2"/>
-      <circle cx="64" cy="64" r="50" fill="none" stroke="rgba(214,185,124,.18)" stroke-width=".6" stroke-dasharray="1 4"/>
+    return `<div class="score"><svg viewBox="0 0 128 128" aria-hidden="true"><defs><linearGradient id="sg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#c9a764"/><stop offset=".5" stop-color="#a27a34"/><stop offset="1" stop-color="#7a561a"/></linearGradient></defs>
+      <circle cx="64" cy="64" r="58" fill="none" stroke="rgba(70,50,20,.12)" stroke-width="2"/>
+      <circle cx="64" cy="64" r="50" fill="none" stroke="rgba(122,86,26,.25)" stroke-width=".6" stroke-dasharray="1 4"/>
       <circle class="arc" cx="64" cy="64" r="58" fill="none" stroke="url(#sg)" stroke-width="3" stroke-linecap="round" style="stroke-dasharray:${C.toFixed(1)};stroke-dashoffset:${off.toFixed(1)};--c:${C.toFixed(1)}"/></svg>
       <div><b class="gt">${score}</b><small>궁합 점수</small></div></div>`;
   }
@@ -644,16 +644,16 @@
     const r = $("#ring"); if (!r || r.dataset.ok) return; r.dataset.ok = 1;
     const B = "子丑寅卯辰巳午未申酉戌亥", G = "甲乙丙丁戊己庚辛壬癸", c = 118;
     const ring = (txt, rad, fs, op, step) => [...txt].map((ch, i) => { const a = i * step * Math.PI / 180;
-      return `<text x="${(c + rad * Math.sin(a)).toFixed(1)}" y="${(c - rad * Math.cos(a) + fs * 0.36).toFixed(1)}" text-anchor="middle" font-family="MW Serif,serif" font-size="${fs}" fill="#d6b97c" opacity="${op}">${ch}</text>`; }).join("");
+      return `<text x="${(c + rad * Math.sin(a)).toFixed(1)}" y="${(c - rad * Math.cos(a) + fs * 0.36).toFixed(1)}" text-anchor="middle" font-family="MW Serif,serif" font-size="${fs}" fill="#8a6420" opacity="${Math.min(1, op + .25)}">${ch}</text>`; }).join("");
     const ticks = Array.from({ length: 72 }, (_, i) => { const a = i * 5 * Math.PI / 180, r1 = i % 6 ? 113 : 110;
-      return `<line x1="${(c + r1 * Math.sin(a)).toFixed(1)}" y1="${(c - r1 * Math.cos(a)).toFixed(1)}" x2="${(c + 116 * Math.sin(a)).toFixed(1)}" y2="${(c - 116 * Math.cos(a)).toFixed(1)}" stroke="#d6b97c" stroke-width=".6" opacity=".45"/>`; }).join("");
+      return `<line x1="${(c + r1 * Math.sin(a)).toFixed(1)}" y1="${(c - r1 * Math.cos(a)).toFixed(1)}" x2="${(c + 116 * Math.sin(a)).toFixed(1)}" y2="${(c - 116 * Math.cos(a)).toFixed(1)}" stroke="#8a6420" stroke-width=".6" opacity=".5"/>`; }).join("");
     r.innerHTML = `<svg viewBox="0 0 236 236" aria-hidden="true">
-      <defs><radialGradient id="rg"><stop offset="0" stop-color="rgba(214,185,124,.20)"/><stop offset="1" stop-color="rgba(214,185,124,0)"/></radialGradient></defs>
+      <defs><radialGradient id="rg"><stop offset="0" stop-color="rgba(214,185,124,.34)"/><stop offset="1" stop-color="rgba(214,185,124,0)"/></radialGradient></defs>
       <circle cx="${c}" cy="${c}" r="80" fill="url(#rg)"/>
       <g class="rot">${ticks}${ring(B, 98, 13, .55, 30)}</g>
-      <circle cx="${c}" cy="${c}" r="86" fill="none" stroke="rgba(214,185,124,.28)" stroke-width=".6"/>
+      <circle cx="${c}" cy="${c}" r="86" fill="none" stroke="rgba(122,86,26,.3)" stroke-width=".6"/>
       <g class="rot2">${ring(G, 75, 9.5, .35, 36)}</g>
-      <circle cx="${c}" cy="${c}" r="64" fill="none" stroke="rgba(214,185,124,.35)" stroke-width=".6"/></svg>
+      <circle cx="${c}" cy="${c}" r="64" fill="none" stroke="rgba(122,86,26,.36)" stroke-width=".6"/></svg>
       <div class="core"><b class="gt">${FY.br}</b><small>${FY.ko} · ${FY.animal}</small></div>`;
   }
 

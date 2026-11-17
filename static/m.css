@@ -98,7 +98,7 @@ b,strong{font-weight:600}
 .prem{display:flex;gap:14px;align-items:center;margin:14px 0 0;padding:16px;border-radius:18px;border:1px solid var(--line);
  background:linear-gradient(120deg,rgba(214,185,124,.10),rgba(214,185,124,.02) 60%)}
 .prem .doc{flex:none;width:44px;height:56px;border-radius:4px;background:linear-gradient(160deg,#f4ecda,#d9c9a4);box-shadow:4px 4px 0 -1px rgba(214,185,124,.25),0 6px 16px rgba(0,0,0,.4);display:grid;place-items:center;font-family:var(--serif);color:#7a5a2a;font-size:16px}
-.prem b{font-family:var(--serif);font-weight:500;font-size:15.5px;display:block} .prem p{margin:2px 0 0;font-size:12.5px;color:var(--sub)}
+.prem b{font-family:var(--serif);font-weight:500;font-size:16px;display:block;white-space:nowrap;word-break:keep-all} .prem p{margin:2px 0 0;font-size:12.5px;color:var(--sub);word-break:keep-all}
 .trust{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:18px 0 4px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .trust span{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;font-size:11.5px;color:var(--sub);padding:14px 4px;line-height:1.4}
 .trust span+span{border-left:1px solid var(--line)} .trust svg{color:var(--gold);width:18px;height:18px}
@@ -520,3 +520,42 @@ b.adv-c{color:#e7a48c}b.adv-s{color:#a9cfa9}b.adv-x{color:#d6b97c}
 .ny-t .th{flex-direction:column;align-items:flex-start;gap:2px}
 .ny-t .th .nst{text-align:left;white-space:nowrap}
 .ny-t .th .nst .sw{display:inline;margin:0 0 0 5px;line-height:inherit}
+
+/* jeomsin1117: 배치는 익숙하게, 색·글꼴·카드 모양은 그대로 */
+.menu-top{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:2px 0 8px}
+.menu-top .mcard{flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;padding:14px 6px 12px;gap:8px;min-width:0}
+.menu-top .mcard .ic{width:44px;height:44px;font-size:20px}
+.menu-top .mcard>div{min-width:0;width:100%}
+.menu-top .mcard b{font-size:14.5px;line-height:1.25;white-space:nowrap}
+.menu-top .mcard p{margin:3px 0 0;font-size:11px;line-height:1.35;color:var(--sub)}
+.menu-top .mcard .go{display:none}
+.hero-home.hero-compact{padding:2px 0 4px;margin:0 0 2px}
+.hero-home.hero-compact .ring{width:140px;height:140px;margin:0 auto}
+.hero-home.hero-compact .ring .core b{font-size:52px}
+.hero-home.hero-compact .ring .core small{font-size:8.5px;letter-spacing:.28em;margin-top:2px;padding-left:.28em}
+.hero-home.hero-compact .yr{font-size:11px;letter-spacing:.4em}
+.hero-home.hero-compact h1{font-size:22px;margin:8px 0 6px}
+.hero-home.hero-compact p{margin:0 auto 4px;max-width:300px;font-size:13.5px}
+.tabbar button.tab-season{letter-spacing:0;color:var(--gold-lo)}
+.tabbar button.tab-season .tab-lab{white-space:nowrap;font-size:10px;letter-spacing:0;line-height:1.2}
+.tabbar button.tab-season.on{color:var(--gold-hi)}
+.tabbar{background:rgba(11,13,20,.96)}
+.ny-vd{display:grid;gap:8px;margin:0 0 12px}
+.ny-vd-i{border-radius:14px;padding:12px 14px}
+.ny-vd-i em{display:block;font-style:normal;font-size:11.5px;letter-spacing:.06em;color:#6b665b;margin-bottom:3px;font-weight:600}
+.ny-vd-i p{margin:0;font-size:14.5px;line-height:1.5;color:#2a2a26}
+.ny-vd-i.g{background:#dfe9dc}
+.ny-vd-i.c{background:#f3dcd6}
+.ny-vd .slg{margin:0 2px;color:#6b665b}
+.ny-t-sm{padding:10px 12px;min-height:76px}
+.ny-t-pay{background:#2f3b33;color:#f6f1e7}
+.ny-t-pay .th b{color:#f6f1e7}
+.ny-t-pay .th em{color:#e9d3a0}
+.ny-t-pay p{color:#d8d0c0;margin:6px 0 8px}
+.ny-t-pay .go{color:#f6f1e7}
+.ny-t-pay[disabled]{opacity:.55;cursor:default}
+
+.prem .plist{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:3px}
+.prem .plist li{font-size:12.5px;color:var(--sub);line-height:1.45;word-break:keep-all;overflow-wrap:normal}
+.prem .plist li .sub{display:block;color:var(--mute)}
+.ny-vd-i p{word-break:keep-all;overflow-wrap:normal}

@@ -478,11 +478,84 @@
     catch (e) { nyForm(e.message); }
   }
   const nyStars = n => n ? `<span class="nst">${"★".repeat(n)}<i>${"☆".repeat(5 - n)}</i><em class="sw">${SW[n]}</em></span>` : "";
+  /* jeomsin1117b: 주제 이름 먼저, 낮은 주제 1~2개 + 이사·계약 판정. 지어내지 않음. */
+  function nyJong(s) { const ch = [...String(s)].filter(c => c >= "가" && c <= "힣").pop(); return ch ? (ch.charCodeAt(0) - 0xac00) % 28 !== 0 : false; }
+  function nyEun(s) { return nyJong(s) ? "은" : "는"; }
+  function nyGwa(s) { return nyJong(s) ? "과" : "와"; }
+  function nyKo(t, age) {
+    if (t.key === "kids" && age != null && age < 35) return "아랫사람과의 인연";
+    if (t.key === "love" && age != null && age >= 60) return "배우자·가족";
+    return t.ko;
+  }
+  function nyJoinEun(ns) { return ns.length === 1 ? ns[0] + nyEun(ns[0]) : ns[0] + nyGwa(ns[0]) + " " + ns[1] + nyEun(ns[1]); }
+  function nyJoinBest(ns, extra) { const base = ns.length === 1 ? ns[0] : ns[0] + nyGwa(ns[0]) + " " + ns[1]; return extra ? base + " 등" : base; }
+  function nyStarBit(t) { return `★${t.star} ${SW[t.star] || ""}`; }
+  function nyAct(move, contract) {
+    const say = { "미룸": "미루는 편이 좋아요", "신중": "신중하게 보세요", "해도 됨": "해도 돼요" };
+    if (!move && !contract) return "";
+    if (move && contract && move === contract) return `이사와 계약은 ${say[move]}.`;
+    if (move && contract) {
+      const a = move === "해도 됨" ? "해도 되고" : move === "미룸" ? "미루는 편이 좋고" : "신중하게 보시고";
+      return `이사는 ${a}, 계약은 ${say[contract]}.`;
+    }
+    return (move ? `이사는 ${say[move]}.` : "") + (contract ? `계약은 ${say[contract]}.` : "");
+  }
+  function nyPick(xs) {
+    const order = ["money", "job", "biz", "love", "move", "health", "kids"];
+    return [...xs].sort((a, b) => {
+      const ia = order.indexOf(a.key), ib = order.indexOf(b.key);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    }).slice(0, 2);
+  }
+  function nyVerdictHTML(d) {
+    const age = d.age, year = d.year, act = nyAct(d.move, d.contract);
+    const ranked = (d.topics || []).filter(t => t.star).sort((a, b) => b.star - a.star || 0);
+    let good, caution;
+    if (!ranked.length) {
+      good = `한 해 전체는 ★${d.star} ${SW[d.star] || ""}(${esc(d.verdict)})이에요.`;
+      caution = act || "주제별 별점이 아직 없어요.";
+    } else {
+      const hi = ranked[0].star, lo = ranked[ranked.length - 1].star;
+      const allB = ranked.filter(t => t.star === hi), allL = ranked.filter(t => t.star === lo);
+      const bests = nyPick(allB), lows = nyPick(allL);
+      const bn = bests.map(t => nyKo(t, age)), ln = lows.map(t => nyKo(t, age));
+      if (hi === lo) {
+        good = `주제별 별점은 모두 ★${hi} ${SW[hi] || ""}이에요. 한 해 전체는 ★${d.star} ${SW[d.star] || ""}(${esc(d.verdict)})이에요.`;
+        caution = (hi <= 2 ? `모든 주제가 ★${hi} ${SW[hi] || ""}이에요.` : "특별히 낮은 주제는 없어요.") + (act ? `<br>${act}` : "");
+      } else {
+        const nb = nyJoinBest(bn, allB.length > 2);
+        if (hi >= 4) good = `${nb} ${nyStarBit(bests[0])}`;
+        else if (hi === 3) good = `${nb} ${nyStarBit(bests[0])} · ${year}년 가장 무난한 쪽이에요.`;
+        else good = `${nb} ${nyStarBit(bests[0])} · ${year}년에는 높은 별점인 주제가 없어요.`;
+        caution = `${nyJoinEun(ln)} ★${lo} ${SW[lo] || ""}이에요.` + (act ? `<br>${act}` : "");
+      }
+    }
+    return `<div class="ny-vd rv" style="--i:0"><div class="ny-vd-i g"><em>${year}년 가장 좋은 것</em><p>${good}</p></div>
+      <div class="ny-vd-i c"><em>${year}년 조심할 것</em><p>${caution}</p></div>
+      <p class="slg">별점은 높을수록 좋아요 · 사주 별점이 결론이에요(토정비결은 전통 참고)</p></div>`;
+  }
+  function nyLockGrid(d, o, ownNy, ownPm) {
+    const cells = (d.topics || []).map((x, i) => `<button type="button" class="ny-t ny-t-sm rv" style="--i:${4 + i}" data-nt="${x.key}"><div class="th"><b>${esc(x.ko)}</b>${x.partner ? `<em>상대 입력</em>` : nyStars(x.star)}</div>
+      <span class="go">${x.partner ? "상대 넣기" : "자세히 보기"} →</span></button>`).join("");
+    const pm = (CONFIG.tiers || {}).premium || { pages: "24~25쪽" };
+    return `<div class="ny-s rv" style="--i:3"><b>더 자세히 보기</b> <span>주제 심층 · 신년운세 · 프리미엄</span></div>
+      <div class="ny-g">${cells}
+        <button type="button" class="ny-t ny-t-pay rv" id="ny-buy"${o.ready ? "" : " disabled"}><div class="th"><b>${d.year} 신년운세</b><em>${ownNy ? "열림" : won(o.price)}</em></div>
+          <p>${o.ready ? `12달 흐름 + 8개 주제<br>${esc(o.pages)}` : "이 괘의 풀이를 준비 중이에요"}</p>
+          <span class="go">${ownNy ? "감정서 보기 →" : "감정서 열기 →"}</span></button>
+        <button type="button" class="ny-t ny-t-pay rv" id="ny-pm"><div class="th"><b>프리미엄</b><em>${ownPm ? "열림" : won(d.premium_price)}</em></div>
+          <p>평생·10년 흐름까지<br>${esc(pm.pages || "24~25쪽")}</p>
+          <span class="go">${ownPm ? "감정서 보기 →" : "감정서 열기 →"}</span></button></div>
+      <p class="slg">별점은 높을수록 좋아요(건강도 높을수록 탈이 적어요) · ★5 아주 좋음 · ★4 좋음 · ★3 보통 · ★2 조심 · ★1 크게 조심</p>
+      <p class="ny-f">주제 칸을 누르면 주제 2개를 골라 심층(${won(d.focus_price)})으로 볼 수 있어요.</p>`;
+  }
   function nyResult(d, b) {
-    const el = $("#v-newyear"), t = d.tojeong, o = d.offer, own = ownsOf(d.chart).some(x => x.split(".")[1] === "newyear");
+    const el = $("#v-newyear"), t = d.tojeong, o = d.offer, ownNy = ownsOf(d.chart).some(x => x.split(".")[1] === "newyear");
+    const ownPm = ownsOf(d.chart).some(x => x.split(".")[1] === "premium");
     const months = (t.months || []).map(m => `<span class="m ${m.tone}">${m.m}월</span>`).join("");
     el.innerHTML = `<div class="ny">
       <div class="ny-hd rv"><b>${d.year} ${esc(d.ko)}년 신년운세</b><span>무료: 토정비결 한 해 괘 + 내 사주 요약 · 음력 생일 기준</span></div>
+      ${nyVerdictHTML(d)}
       <div class="ny-c rv" style="--i:1"><div class="ny-tg"><span>토정비결</span><span>무료</span><span class="tr">전통 참고</span></div>
         <div class="gw"><b>${t.sang}·${t.jung}·${t.ha}</b><span>상괘 ${t.sang} · 중괘 ${t.jung} · 하괘 ${t.ha}<br>세는 나이 ${d.age + 1} + ${d.year}년 태세수로 계산</span></div>
         ${t.ready ? `<p class="one"><b>한 줄 풀이</b> ${t.title ? `「${t.title}」 · ` : ""}${t.line}</p>` : `<p class="one">이 괘의 풀이 문장은 준비 중이에요. 괘 번호는 위와 같아요.</p>`}
@@ -491,26 +564,28 @@
         ${months ? `<div class="mg">${months}</div><p class="lg"><i class="g"></i>움직이기 좋은 달 · <i class="b"></i>한 번 더 확인할 달 (음력)</p>` : ""}</div>
       <div class="ny-c rv" style="--i:2"><div class="ny-tg"><span>사주 요약</span><span>무료</span></div>
         <p>일간 ${esc(d.dm_ko)}(${esc(d.dm)}), ${d.strength || ""} · 용신 ${EL[d.yong] || esc(d.yong)}</p>
-        <p><b>${d.year}년 별점 ${nyStars(d.star)}</b> · ${esc(d.verdict)}. 이사 <b>${esc(d.move)}</b> · 계약 <b>${esc(d.contract)}</b></p>
+        <p><b>${d.year}년 별점 ${nyStars(d.star)}</b> · ${esc(d.verdict)}.</p>
+        <p>이사 <b>${esc(d.move)}</b>, 계약 <b>${esc(d.contract)}</b></p>
         <p class="sm">${d.line}.</p></div>
-      <div class="ny-s rv" style="--i:3"><b>주제별로 ${d.year}년 보기</b> <span>(맛보기 무료 · 자세히는 ${won(d.focus_price)})</span></div>
-      <div class="ny-g">${d.topics.map((x, i) => `<button type="button" class="ny-t rv" style="--i:${4 + i}" data-nt="${x.key}"><div class="th"><b>${esc(x.ko)}</b>${x.partner ? `<em>상대 입력</em>` : nyStars(x.star)}</div>
-        <p>${x.teaser}</p><span class="go">${x.partner ? "상대 넣기" : "자세히 보기"} →</span></button>`).join("")}</div><p class="slg">별점은 높을수록 좋아요(건강도 높을수록 탈이 적어요) · ★5 아주 좋음 · ★4 좋음 · ★3 보통 · ★2 조심 · ★1 크게 조심</p>
+      ${nyLockGrid(d, o, ownNy, ownPm)}
       <p class="err" id="ny-err"></p>
-      <button class="ny-cta rv" id="ny-buy"${o.ready ? "" : " disabled"}><b>${own ? "열림 · " : ""}${d.year}년 전체 신년운세 감정서 보기</b><span>${o.ready ? `12달 흐름 + 8개 주제 · PDF · ${esc(o.pages)}${own ? "" : " · " + won(o.price)}` : "이 괘의 풀이를 준비 중이라 조금 뒤에 열려요"}</span></button>
-      <p class="ny-f">주제 2개만 자세히 보고 싶으면 주제 심층(${won(d.focus_price)}), 평생·10년 흐름까지는 프리미엄(${won(d.premium_price)})이에요.</p>
       <p class="ny-src">${esc(t.source)}</p>
       <button class="btn btn-line" id="ny-again">다른 생년월일로 보기</button></div>`;
     $("#ny-again", el).onclick = () => nyForm();
     $$("[data-nt]", el).forEach(x => x.onclick = () => { store.set("tp_pre", [x.dataset.nt]); go("saju"); sajuOnly(b); });
-    const buy = $("#ny-buy", el);
-    buy.onclick = async () => {
-      if (buy.disabled) return; const old = buy.innerHTML; buy.disabled = true; buy.innerHTML = "<b>감정서를 만드는 중…</b>";
-      try { const r = await api("/api/v2/tier", { birth: b, tier: "newyear", owns: ownsOf(d.chart) });
-        if (r.unlock) { store.set("u_" + r.rid, r.unlock); openViewer(r.rid, r.title); } else tierBuy(r, r.title, () => nyResult(d, b)); }
-      catch (e) { $("#ny-err", el).textContent = e.message; }
-      finally { if (buy.isConnected) { buy.disabled = false; buy.innerHTML = old; } }
+    const buyTier = (btn, tier) => {
+      if (!btn || btn.disabled) return;
+      btn.onclick = async () => {
+        if (btn.disabled) return; const old = btn.innerHTML; btn.disabled = true; btn.innerHTML = "<b>감정서를 만드는 중…</b>";
+        try { const r = await api("/api/v2/tier", { birth: b, tier, owns: ownsOf(d.chart) });
+          if (r.unlock) { store.set("u_" + r.rid, r.unlock); openViewer(r.rid, r.title); nyResult(d, b); }
+          else tierBuy(r, r.title, () => nyResult(d, b)); }
+        catch (e) { $("#ny-err", el).textContent = e.message; }
+        finally { if (btn.isConnected) { btn.disabled = false; btn.innerHTML = old; } }
+      };
     };
+    buyTier($("#ny-buy", el), "newyear");
+    buyTier($("#ny-pm", el), "premium");
   }
 
   /* ---------- 궁합 ---------- */
